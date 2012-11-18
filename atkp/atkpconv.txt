@@ -1,0 +1,139 @@
+rem convert day sumary files to new format
+rem whilst retaining the data
+
+
+
+proc main:
+
+	local pat$(120),f1$(250),f2$(250)
+	local start$(6),end$(6),break$(6), total$(6)
+	local date&,start&,end&,break&,total&,details%,jobtype%,daytype%,partial%,desc$(250)
+	local c%
+	
+	c%=0
+	
+	pat$="M:\opd\atkp\"
+rem	pat$="M:\opd\atkp\"
+	f1$=pat$+"D1996.dat"
+	f2$=pat$+"D1996.OLD"
+	
+rem rename the file
+	RENAME f1$,f2$
+	
+rem open old format
+OPEN f2$,B,date&,start$,end$,break$,details%,jobtype%,daytype%,partial%,desc$
+
+rem create and open new format
+CREATE f1$,A,date&,start$,end$,break$,details%,jobtype%,daytype%,partial%,desc$,total$
+
+USE B
+FIRST
+
+While (NOT EOF)
+
+rem repeat
+rem read old
+USE B
+	date&=B.date&
+	start$=B.start$
+	end$=B.end$
+	break$=B.break$
+	details%=B.details%
+	jobtype%=B.jobtype%
+	daytype%=B.daytype%
+	partial%=B.partial%
+	desc$=B.desc$
+	total&= tothour&:(timlon&:(start$),timlon&:(end$),timlon&:(break$))
+	total$ = timstr$:(total&)
+	
+rem write new
+USE A
+	A.date&=date&
+	A.start$=start$
+	A.end$=end$
+	A.break$=break$
+	A.details%=details%
+	A.jobtype%=jobtype%
+	A.daytype%=daytype%
+	A.partial%=partial%
+	A.desc$=desc$
+	A.total$=total$
+	APPEND
+	
+rem display count
+	print c%
+	c%=c%+1
+	
+USE B
+NEXT
+Endwh
+rem until eof
+
+rem close old
+USE B
+CLOSE
+rem close new
+USE A
+CLOSE
+
+print "Done"
+endp
+
+
+rem ************************************************
+rem given a time string HH:MM return the time long
+rem ************************************************
+proc timstr$:(tim&)
+
+	local dum%,h%,m%
+	local rt$(6), h$(3),m$(3)
+	
+		SECSTODATE tim&, dum%, dum%, dum%, h%, m%, dum%, dum%
+
+    if(h%<10)
+        h$="0"+num$(h%,1)
+    else
+        h$=num$(h%,2)
+    endif
+
+    if(m%<10)
+        m$="0"+num$(m%,1)
+    else
+        m$=num$(m%,2)
+    endif
+
+		rt$= h$+":"+m$
+
+		return rt$
+		
+endp
+
+rem *************************************************************
+rem tothours calculates the total hours worked given a start time
+rem an end time and the breaks
+rem *************************************************************
+PROC tothour&:( start&, end&, breaks&)
+
+   	local sh&
+
+    sh& = end&-start&-breaks&
+    sh&=sh& + DATETOSECS(1970,1,1,00,00,00)
+
+    RETURN sh&
+
+ENDP
+
+rem ************************************************
+rem given a time string HH:MM return the time long
+rem ************************************************
+proc timlon&:(tim$)
+	local h%,m%,d&
+	
+				h%=val(mid$(tim$,1,2))
+        m%=val(mid$(tim$,4,2))
+        d& = datetosecs(1970,1,1,h%,m%,0)
+
+		return d&
+endp
+
+

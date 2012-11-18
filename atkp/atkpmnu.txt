@@ -1,0 +1,132 @@
+/******************************/
+rem Atkpmnu.opp
+rem
+rem all the menu functions
+rem
+rem hmenu1:
+rem mprocm:
+rem mprocx:
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+/******************************/
+
+rem *******************************
+rem handle the main menubar
+rem *******************************
+proc hmenu1:
+
+LOCAL mnuopt%
+
+	mINIT
+	mCARD "Record", "Edit Current",%e,"Edit Specific",%s,"Goto Date",-%g
+	mCARD "options","Weekly Totals",-%t
+	mCARD "Special","Edit Parameters",%p,"Calculate time period",%c,"Zoom In",-%z,"Zoom Out",%Z,"About",-%a,"Special Code",-%f,"Exit",-%x
+
+	mnuopt%=MENU
+
+
+
+
+
+IF mnuopt%<=%Z AND (LOC(mnuupts$(progvi%),CHR$(mnuopt%))<>0)     REM upper case MENU CHECK
+	@("mprocu" + chr$(mnuopt%) ): REM mprocuN:, mprocuO:, ...
+	                        REM END OF MENU CHECK
+	
+elseif mnuopt% AND (LOC(mnuopts$(progvi%),CHR$(mnuopt%))<>0)     REM lower case MENU CHECK
+rem	if mnuopt% AND (LOC(mnuopts$(progvi%),CHR$(mnuopt%))<>0)     REM lower case MENU CHECK
+			@("mproc" + chr$(mnuopt%) ): REM mprocn:, mproco:, ...
+
+ENDIF                        REM END OF MENU CHECK
+
+endp
+
+proc mprocf:
+	scodes:
+endp
+
+proc mprocg:
+	godat:
+endp
+
+
+
+
+rem *****************************
+rem exit prog option
+rem *****************************
+proc mprocx:
+
+	stop
+	
+endp
+
+proc mproca:
+
+	about:
+	
+endp
+
+proc mprocc:
+	calcgap:
+endp
+
+
+
+proc mprocp:
+	pmenu:
+endp
+
+proc mprocz:
+rem busy "zoom in"
+			@("zoom"+num$(progvi%,1)):
+busy off
+endp
+
+proc mprocuz:
+rem busy "zoom out"
+			@("zoomou"+num$(progvi%,1)):
+busy off
+endp
+
+proc mprocs:
+	eddfor:
+endp
+
+proc mproct:
+
+		weektot:
+
+endp
+
+rem ******************************
+rem edit the day summary details
+rem ******************************
+proc mproce:
+
+	@("edrec"+num$(progvi%,1)): (lcur%)
+
+endp
+
+/*
+proc mproch:
+	local d%
+	
+	dINIT "Edit Standard Hours"
+	dTEXT "","Edit Normal or Contract hours"
+	dBUTTONS "Normal",%n,"Contract",%c
+	d%=DIALOG
+	
+	if( d%=%c)
+		edshours:
+	else
+		ednhours:
+	endif
+endp
+*/
+

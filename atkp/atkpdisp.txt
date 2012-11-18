@@ -1,0 +1,457 @@
+/****************************************************/
+rem Atkpdisp.opp
+rem
+rem the display functions
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+/****************************************************/
+rem **********************************************
+rem display the day summary details
+rem **********************************************
+proc sdaysum:
+
+local lp%, ind%
+
+
+	ind% = fscr%
+	lp% = 1
+	
+	
+	
+rem 	gupdate off
+			osumd: (sumdfn$ )
+	
+	do
+		sdaysum1: (ind%)
+		
+		lp% = lp%+1
+		ind% = ind%+1
+		
+	until( ind%>mrec% OR lp%>mscr%)
+
+
+	CLOSE
+		
+rem	gupdate on
+	
+endp
+
+
+rem **********************************************
+rem calculate the positions of the displayable text
+rem **********************************************
+proc fdispos:
+	local  cw%, cx%, cy%, cxadd%, lp%, ind%
+
+	cw%=i%(7)	rem the width of a character
+	cxadd% = 1	rem the gap between things
+	cx%= 0		rem the current x pos
+
+	cxadd% = cxadd% *cw%
+	
+	lp%=1
+	
+	while(lp% <= MAXFIELDS)
+
+		if(dispord%(lp%) <> 0)
+
+			ind% = dispord%(lp%) 	rem the index of the next item
+
+			if(ind%=1)	rem the first one
+				fldx%( ind% ) = cx% + cxadd%
+			else
+				fldx%( ind% ) = cx% + cxadd% + ((fldlen%(dispord%(lp%-1))-1) * cw%)
+			endif
+
+			cx% = fldx%(ind%) + cxadd%
+		endif
+		
+		lp%=lp%+1
+	endwh
+
+endp
+
+
+rem **********************************************
+rem display the day summary details at l%
+rem **********************************************
+proc sdaysum1: (l%)
+
+local dum%, econd%, h%, m%, cw%, cx%, cy%, cyadd%, lp%, ind%
+
+
+	lp% = l%-fscr%+1
+	cyadd% = titleh%:
+
+		doday: ( l% )
+		cy% = cyadd%+(lp%*i%(3))
+		
+
+	rem if there are day details to show
+	if( dindx%( l% ) <> -1 )
+
+		rem open the days data file
+rem		osumd: (sumdfn$ )
+
+		rem get rec no for l%
+		POSITION dindx%(l%)
+
+		rem display normal information
+		lp%=1
+		econd%=0
+		
+		do
+			if(dispord%(lp%)<>0)
+
+				rem display the field info
+				dfinfo:(dispord%(lp%),cy%)
+				
+			else
+			
+				econd%=1
+				
+			endif
+
+			lp%=lp%+1
+			
+			if( lp%>MAXFIELDS)
+					econd%=1
+			endif
+			
+		until( econd%=1 )
+
+		rem close the file
+		rem CLOSE
+	else
+
+		rem display estimation information
+		if( wdays%( dow( ddate%(1),ddate%(2),ddate%(3)) ) AND shodays% AND esttm%(progvi%) = 1)
+
+			lp%=1
+			econd%=0
+			
+			do
+				if(dispord%(lp%)<>0)
+	
+					rem display the estimated field info
+					dfeinfo:(dispord%(lp%),cy%)
+				
+				else
+					
+					econd%=1
+					
+				endif
+	
+				lp%=lp%+1
+
+				if( lp%>MAXFIELDS)
+				
+					econd%=1
+					
+				endif
+				
+			until( econd%=1 )
+
+		endif
+	endif
+
+
+endp
+
+proc dfinfo:( field%, cy%)
+
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+
+	if(field% = STATUS_FIELD)
+
+		gat fldx%(field%), cy%
+		gprint "  "
+
+	elseif (field% = CURSOR_FIELD)
+
+		gat fldx%(field%), cy%
+		gprint " "
+
+	elseif (field% = DATE_FIELD)
+
+		gat fldx%(field%), cy%
+		gprint ddate%(1);"/";ddate%(2);"/";ddate%(3);
+
+	elseif (field% = DAYTYPE_FIELD)
+
+		gat fldx%(field%), cy%
+		if( refdu%(B.daytype%+1) = 1)
+			
+			gPRINT mid$(refdn$,refdno%(B.daytype%+1),refdnl%(B.daytype%+1))
+		else
+			gPRINT "Unknown"
+		endif
+
+	elseif (field% = START_TIME_FIELD)
+
+		gat fldx%(field%), cy%
+		gPRINT B.start$
+		
+	elseif (field% = END_TIME_FIELD)
+
+		gat fldx%(field%), cy%
+		gPRINT B.end$
+		
+	elseif (field% = BREAK_TIME_FIELD)
+
+		gat fldx%(field%), cy%
+		gPRINT B.break$
+
+	elseif (field% = TOTAL_TIME_FIELD)
+
+		gat fldx%(field%), cy%
+		gPRINT B.total$
+					
+	elseif (field% = JOBTYPE_FIELD)
+
+		gat fldx%(field%), cy%
+		if( refju%(B.jobtype%+1) = 1)
+			gPRINT mid$(refjn$,refjno%(B.jobtype%+1),refjnl%(B.jobtype%+1))
+		else
+			gPRINT "Unknown"
+		endif
+
+	elseif (field% = DAYDESC_FIELD)
+
+		gat fldx%(field%), cy%
+		gPRINT left$(B.desc$, fldlen%(field%))
+
+	endif
+
+endp
+
+
+
+proc dfeinfo:( field%, cy%)
+	  @("dfefd"+num$(field%,1)): (cy%)
+endp
+
+proc dfefd!!STATUS_FIELD!!: (cy%)
+
+		gat fldx%(STATUS_FIELD), cy%
+		gprint "e"
+		
+endp
+
+proc dfefd!!CURSOR_FIELD!!: (cy%)
+
+		gat fldx%(CURSOR_FIELD), cy%
+		gprint " "
+
+endp
+
+proc dfefd!!DATE_FIELD!!: (cy%)
+
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(DATE_FIELD), cy%
+		gprint ddate%(1);"/";ddate%(2);"/";ddate%(3);
+
+endp
+
+
+proc dfefd!!DAYTYPE_FIELD!!: (cy%)
+
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(DAYTYPE_FIELD), cy%
+		rem print any default here
+endp
+
+proc dfefd!!START_TIME_FIELD!!: (cy%)
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(START_TIME_FIELD), cy%
+		gprint estart$
+
+endp
+
+
+proc dfefd!!END_TIME_FIELD!!: (cy%)
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(END_TIME_FIELD), cy%
+		gprint eend$
+endp
+			
+proc dfefd!!BREAK_TIME_FIELD!!: (cy%)
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(BREAK_TIME_FIELD), cy%
+		gprint ebreak$
+endp
+
+proc dfefd!!TOTAL_TIME_FIELD!!: (cy%)
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(TOTAL_TIME_FIELD), cy%
+		gprint etotal$
+endp
+
+proc dfefd!!JOBTYPE_FIELD!!: (cy%)
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(JOBTYPE_FIELD), cy%
+		rem print any default here
+endp
+
+proc dfefd!!DAYDESC_FIELD!!: (cy%)
+local dum%, h%, m%, cw%, cx%, cyadd%, lp%, ind%
+
+		gat fldx%(DAYDESC_FIELD), cy%
+		rem print any default here
+		gprint "Estimated Day"
+
+endp
+
+
+
+
+rem ***********************************************
+rem blank the line for l%
+rem ***********************************************
+proc bline:(l%)
+
+local  ch%, cw%, cy%, cyadd%, lp%
+
+
+	lp% = l%-fscr%+1
+	cyadd% = titleh%:+1
+	cw%=i%(7)
+	
+rem 	gupdate off
+
+	cy% = cyadd%+((lp%-1)*i%(3))
+
+	gAT 0,cy%
+	gGREY 2
+	gFILL gWIDTH,i%(7)+1,1
+	gGREY 0
+	gBORDER 1
+rem	gupdate on
+endp
+
+
+rem **************************************************************
+rem draw the titles in the current font at the top of the screen *
+rem **************************************************************
+proc ptitles:
+
+	local ch%,lp%
+	
+	ch% = i%(3)
+
+	
+	gAT 0,0
+rem	gGREY 1
+rem	gFILL gWIDTH,ch%,0
+rem	gGREY 0
+	gAT 0,ch%
+	gLINEBY gWIDTH,0
+	
+
+	lp%=1
+	do
+		if(dispord%(lp%)<>0)
+
+			gAT fldx%(dispord%(lp%)),ch%
+			gPRINT fldtitl$(dispord%(lp%))
+
+		endif
+
+		lp%=lp%+1
+
+	until (lp%>MAXFIELDS)
+
+endp
+
+rem ************************************
+rem draw a new setof details on the screen
+rem ***************************************
+proc ndetails:
+
+	gAT 0,0
+	gGREY 2
+	gFILL gWIDTH,gHEIGHT,1
+	gGREY 0
+	gBORDER 1
+	pdetails:
+
+endp
+
+
+rem **************************************************************
+rem draw the details of the current mode
+rem **************************************************************
+proc pdetails:
+
+	local ch%,cw%,lp%
+	
+	ch% = i%(3)
+	cw% = i%(7)
+
+	gUPDATE OFF
+
+	cls
+	ptitles:
+	sdaysum:
+	pcursor:	
+	
+	gUPDATE ON
+	
+endp
+
+rem **************************************************************
+rem draw the cursor of the current mode
+rem **************************************************************
+proc pcursor:
+
+	local ch%,cw%,lp%,cyadd%
+	
+	ch% = i%(3)
+	cw% = i%(7)
+	
+	cyadd% = titleh%:
+
+	gAT fldx%(CURSOR_FIELD), (cyadd%+ch%*(ocur%))+1
+	gFILL i%(7), i%(3)-1, 1
+		
+	gAT fldx%(CURSOR_FIELD), cyadd%+ch%*(dcur%+1)
+	gPRINT ">"
+	
+endp
+
+rem **************************************************************
+rem hide the cursor of the current mode
+rem **************************************************************
+proc hcursor:
+
+	local ch%,cw%,lp%,cyadd%
+	
+	ch% = i%(3)
+	cw% = i%(7)
+	
+	cyadd% = titleh%:
+
+	gAT fldx%(CURSOR_FIELD), (cyadd%+ch%*(ocur%))+1
+	gFILL i%(7), i%(3)-1, 1
+	
+endp
+
+

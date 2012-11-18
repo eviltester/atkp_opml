@@ -1,0 +1,1364 @@
+/**************************************************/
+rem   Atkpdlgs.opp
+rem
+rem The atkp dialogue and data editing functions
+rem
+rem
+rem mdays:
+rem mdj: (fr%)
+rem edvdef: (t%,edv%)   rem edv defines edit(1) or view (0)
+rem
+rem
+rem edrec1
+rem
+rem
+rem
+/**************************************************/
+
+proc about:
+        dINIT "About ATKP"
+        dTEXT "","Al's Time Keeping Proggy"
+        dTEXT "",gpat$
+        DIALOG
+endp
+
+proc mdays:
+
+    local r%
+
+    do
+
+        dINIT "Maintain"
+        dBUTTONS "Day Types",%d,"Job Names",%j
+        r%=DIALOG
+
+        if(r%<>0)
+            mdj: (r%)
+        endif
+
+    until (r%=0)
+
+endp
+
+proc mdj: (fr%)
+
+    local r%,f%,fd%
+
+    rem maintain days or jobs
+
+    do
+
+        if(fr%=1)
+            dINIT "Day Type Function"
+        else
+            dINIT "Job Name Function"
+        endif
+
+        dBUTTONS "View",%v,"Edit",%e,"Add",%a
+        fd%=DIALOG
+
+        if(fd%<>0)
+       
+            if(fr%=1)
+                r%=1
+            else
+                r%=0
+            endif
+
+            if(fd%=%v OR fd%=%e)
+                if(fd%=%v)
+                    f%=0
+                else
+                    f%=1
+                endif
+
+                edvdef:(r%,f%)
+
+            else
+                rem add
+
+                addjd: (r%)
+
+            endif
+
+        endif
+       
+    until ( fd%=0)
+
+endp
+
+
+proc addjd: (r%)
+
+    local e$(20),r2%,maxind%, sl%, ht%
+
+
+    do
+
+        if(r%=1)
+                maxind% = 1
+                sl% = -1
+                while(sl%=-1)
+                    if(refdu%(maxind%)=0)
+                            sl%=1
+                            maxind% = maxind% - 1
+                    else
+                            maxind% = maxind% + 1
+                    endif
+
+                    if(maxind% = 26)
+                        sl% = 1
+                    endif
+                endwh
+        else
+                maxind% = 1
+                sl% = -1
+                while(sl%=-1)
+                    if(refju%(maxind%)=0)
+                            sl%=1
+                            maxind% = maxind% - 1
+                    else
+                            maxind% = maxind% + 1
+                    endif
+
+                    if(maxind% = 26)
+                        sl% = 1
+                    endif
+                endwh
+
+        endif
+
+
+        if(maxind%>25)
+            dINIT "ERROR"
+            dBUTTONS "No room left to add type",0
+            DIALOG
+            goto endad1
+        endif
+
+
+
+                e$=""
+                ht%=1
+
+                if(r%=1)
+                    dINIT "Add Day Type"
+                    dEDIT e$,"Day Type"
+                    dCHOICE ht%,"Count As", hrtype$
+                    dBUTTONS "OK",13,"Cancel",27
+                    r2%=DIALOG
+                else
+                    dINIT "Add Job Name"
+                    dEDIT e$,"Job Name"
+                    dBUTTONS "OK",13,"Cancel",27
+                    r2%=DIALOG
+                endif
+
+                if(r2%=13)
+                    odfnstr: (dfnsfn$)
+                    C.type%=r%
+
+                    C.index%=maxind%
+
+                    C.name$=e$
+                    C.hours%=ht%-1
+                    APPEND
+                    CLOSE
+                    maxind%=maxind%+1
+
+                    if(r%=1)
+                        readrd:(dfnsfn$)
+										else
+                        readrj:(dfnsfn$)
+                    endif
+
+                endif
+
+    until (r2%<>13)
+
+    endad1::
+
+endp
+
+
+
+rem **********************************
+rem edit/view the definable strings of type t%
+rem **********************************
+
+proc edvdef: (t%,edv%)  rem edv defines edit(1) or view (0)
+
+    local md%           rem max in dialog
+    local lp%
+    local r%
+    local recno%
+    local p%
+    local dc$(16)
+    local poses%(5) rem the databsefile positions of the items in the dialog
+    local r2%, lp2%
+    local maxindx%  rem the maximum index in the reference data file
+
+    md%=4
+    p%=1
+    r%=%n
+
+            odfnstr: (dfnsfn$)
+            FIRST
+            p%=POS
+            CLOSE
+    do
+
+        if(r%<>%n)
+            p%=poses%(1)
+        endif
+
+            odfnstr: (dfnsfn$)
+            POSITION p%
+
+            lp%=0
+
+                    if(t%=0)
+                        dINIT "Job Names"
+                    elseif (t%=1)
+                        dINIT "Day Types"
+                    endif
+
+
+            dc$=""
+
+            do
+
+
+                    while( C.type%<>t% AND NOT EOF)
+                        NEXT
+                        p%=POS
+                    endwh
+
+
+
+                if(NOT EOF)
+
+                    lp%=lp%+1
+                    poses%(lp%)=POS
+                    dTEXT num$(C.index%,2),C.name$
+                    dc$=dc$+num$(C.index%,2)+","
+
+                endif
+
+                NEXT
+                p%=POS
+
+            until (lp%=md% OR EOF)
+  
+        if(lp%>0)
+            dc$=LEFT$(dc$,LEN(dc$)-1)
+        endif
+
+            lp2%=lp%
+            lp%=0
+
+            if(edv%=1)
+                if(lp2%>0)
+                    dCHOICE lp%,"EDIT",dc$
+                endif
+            endif
+
+
+            if(EOF)
+                    if(edv%=1)
+                        if(lp2%=0)
+                            dBUTTONS "No more records left",0
+                        else
+                            dBUTTONS "Edit",%e,"Delete",%d
+                        endif
+                    else
+                        if(lp2%=0)
+                            dBUTTONS "No more records left",0
+                        endif
+                    endif
+            else
+                    if(edv%=1)
+                        dBUTTONS "Next",%n,"Edit",%e,"Delete",%d
+                    else
+                        dBUTTONS "Next",%n
+                    endif
+
+            endif
+            
+        CLOSE
+
+        rem endif
+
+        r%=DIALOG
+rem     lp%=lp%-1
+
+        rem find the position of rec with index lp%
+
+            rem handle edit and delete here
+            if(r%=%d)
+
+                deldlg%: ( poses%(lp%) )
+                if(t%=1)
+                        readrd:(dfnsfn$)
+                endif
+                if(t%=2)
+                        readrj:(dfnsfn$)
+                endif
+
+
+            elseif (r%=%e)
+
+                dlgedit%: ( poses%(lp%), t% )
+                if(t%=1)
+                        readrd:(dfnsfn$)
+                endif
+                if(t%=2)
+                        readrj:(dfnsfn$)
+                endif
+
+
+            endif
+
+    Until (r%=0) rem AND r%<>%e AND r%<>%d)
+rem CLOSE
+endp
+
+
+proc dlgedit%: (pos%, t%)
+
+    local e$(20)
+    local r2%
+    local ht%
+
+                odfnstr: (dfnsfn$)
+                POSITION pos%
+
+                e$=C.name$
+                rem e$=""
+                ht%=C.hours%+1
+
+                if(t%=1)
+                    dINIT "Edit Day Type"
+                    dTEXT   "Index",num$(C.index%,5)
+                    dEDIT e$,"Day Type"
+                    dCHOICE ht%,"Count As",hrtype$
+                    dBUTTONS "Edit",13,"Cancel",27
+                    r2%=DIALOG
+                else
+                    dINIT "Edit Job Name"
+                    dTEXT   "Index",num$(C.index%,5)
+                    dEDIT e$,"Job Name"
+                    dBUTTONS "Edit",13,"Cancel",27
+                    r2%=DIALOG
+                endif
+
+                if(r2%=13)
+                    C.name$=e$
+                    C.hours%=ht%-1
+                    UPDATE
+                endif
+
+                CLOSE
+endp
+
+proc deldlg%: (pos%)
+
+    local r2%
+
+                rem check record
+                odfnstr: (dfnsfn$)
+                POSITION pos%
+
+                if(C.index%=0)
+                        rem can't delete default rec
+                        ALERT("Can't delete default record","","OK")
+
+                else
+                        rem delete it
+                        dINIT "Are You Sure?"
+                        dTEXT "Delete",C.name$
+                        dBUTTONS "Delete",%y,"Cancel",%n
+                        r2%=DIALOG
+
+                        if(r2%=%y)
+                            ERASE
+                        endif
+
+                endif
+                CLOSE
+
+endp
+
+
+rem ******************************
+rem edit the working days
+rem ******************************
+proc edwdays:
+
+local lp%
+
+dINIT "Working Days"
+
+rem now set up the day of the week types
+
+lp%=1
+do
+
+    dCHOICE wdays%(lp%),dayname$(lp%),dt$
+    lp%=lp%+1
+until (lp%=8)
+
+
+DIALOG
+
+    rem save paras
+    wparas: (nopara, wodays)
+
+endp
+
+
+
+rem ******************************
+rem edit the start of the week day
+rem ******************************
+proc edswday:
+
+dINIT "Edit Start of Week"
+dCHOICE sofweek%,"Start of Week",dow$
+
+DIALOG
+
+    rem save paras
+    wparas: (sofwkday, nogroup)
+
+endp
+
+
+rem ********************
+rem edit the font size and change estimating
+rem ********************
+proc edparams:
+
+    local r%,odf%, t$(2)
+
+    esttm%(progvi%)=esttm%(progvi%)+1
+    sumstnd%=sumstnd%+1
+
+    odf%=dfont%
+    t$=num$ (dfont%,2)
+    if (len(t$)<2)
+        t$="0"+t$
+    endif
+    dfont%=(((loc(vfont$, t$) -1) +3) /3)
+
+
+    dINIT "Edit Paramaters"
+    dCHOICE dfont%,"Font",vfont$
+    dCHOICE esttm%(progvi%),"Estimating","OFF,ON"
+    dCHOICE esthrs%,"Estimate Hours","Contract,Normal"
+    dCHOICE shodays%,"Show","Work Days,Weekends,All Days"
+    dCHOICE sumstnd%,"New Entry","Zeroes,Standard Hours"
+    r%=DIALOG
+
+    esttm%(progvi%)=esttm%(progvi%)-1
+    sumstnd%=sumstnd%-1
+
+    if( r% )
+        dfont%=val(mid$(vfont$,(((dfont%-1)*3)+1),2))
+        chngfnt:
+        setsthr:
+        ndetails:
+    else
+        dfont%=odf%
+    endif
+
+    rem save paras
+    wparas: (nopara, normalparams)
+
+endp
+
+rem *********************************
+rem edit details for a specific date
+rem *********************************
+proc eddfor:
+
+    local d%,m%,y%,l%,dum%
+    local ed&,min&,max&,eds&
+  LOCAL dyscent&(2),dateent%(4)
+  LOCAL flags%,ax%,bx%,cx%,dx%,si%,di%
+
+    d%=DAY
+    m%=MONTH
+    y%=YEAR
+
+    ed&=DAYS(d%,m%,y%)
+    min&=DAYS(1,1,1900)
+    max&=DAYS(1,1,y%+100)
+
+    dINIT "Edit Specific Date"
+    dDATE ed&,"Date",min&,max&
+
+    if ( DIALOG )
+
+      dyscent&(1)=ed&
+      si%=ADDR(dyscent&()) :di%=ADDR(dateent%())
+      ax%=$0600 REM TimDaySecondsToDate fn.
+      flags%=OS($89,ADDR(ax%)) REM TimManager int.
+      IF flags% AND 1
+        RAISE (ax% OR $ff00)
+      ELSE
+        y%=PEEKB(di%)+1900 :m%=PEEKB(UADD(di%,1))+1
+        d%=PEEKB(UADD(di%,2))+1 :l%=PEEKW(UADD(di%,6))+1
+      ENDIF
+
+
+
+        rem SECSTODATE ed&,y%,m%,d%,dum%,dum%,dum%,l%
+        @("edrec"+num$(progvi%,1)): (l%)
+
+
+        rem store those details for that date
+
+    endif
+
+endp
+
+
+
+rem *********************************
+rem goto details for a specific date
+rem *********************************
+proc godat:
+
+    local d%,m%,y%,l%,dum%
+    local ed&,min&,max&,eds&
+  LOCAL dyscent&(2),dateent%(4)
+  LOCAL flags%,ax%,bx%,cx%,dx%,si%,di%
+
+    d%=DAY
+    m%=MONTH
+    y%=YEAR
+
+    ed&=DAYS(d%,m%,y%)
+    min&=DAYS(1,1,1900)
+    max&=DAYS(1,1,y%+100)
+
+    dINIT "Go to Specific Date"
+    dDATE ed&,"Date",min&,max&
+
+    if ( DIALOG )
+
+      dyscent&(1)=ed&
+      si%=ADDR(dyscent&()) :di%=ADDR(dateent%())
+      ax%=$0600 REM TimDaySecondsToDate fn.
+      flags%=OS($89,ADDR(ax%)) REM TimManager int.
+      IF flags% AND 1
+        RAISE (ax% OR $ff00)
+      ELSE
+        y%=PEEKB(di%)+1900 :m%=PEEKB(UADD(di%,1))+1
+        d%=PEEKB(UADD(di%,2))+1 :l%=PEEKW(UADD(di%,6))+1
+      ENDIF
+
+        goday:(l%)
+
+    endif
+
+endp
+
+
+
+proc goday:(l%)
+
+        fscr% = l%
+        lcur% = fscr%
+        dcur% = lcur% - fscr%
+        ocur% = dcur%
+        ndetails:
+
+endp
+
+
+
+proc weektot:
+
+    local wdd%,wmm%,wyy%,r%
+    local l%,dum%
+    local ed&,min&,max&,eds&
+  LOCAL dyscent&(2),dateent%(4)
+  LOCAL flags%,ax%,bx%,cx%,dx%,si%,di%
+
+
+    rem specific or current?
+    dINIT "Totals for week"
+    dBUTTONS "Specific",%s,"Today",%t,"Cursor",%c
+    r%=DIALOG
+
+    if(r%=%s)       rem specific
+
+        wdd%=DAY
+        wmm%=MONTH
+        wyy%=YEAR
+
+        ed&=DAYS(wdd%,wmm%,wyy%)
+        min&=DAYS(1,1,1900)
+        max&=DAYS(1,1,wyy%+100)
+
+        dINIT "Edit Specific Date"
+        dDATE ed&,"Date",min&,max&
+
+        if ( DIALOG )
+
+          dyscent&(1)=ed&
+        si%=ADDR(dyscent&()) :di%=ADDR(dateent%())
+          ax%=$0600 REM TimDaySecondsToDate fn.
+          flags%=OS($89,ADDR(ax%)) REM TimManager int.
+          IF flags% AND 1
+            RAISE (ax% OR $ff00)
+          ELSE
+            wyy%=PEEKB(di%)+1900 :wmm%=PEEKB(UADD(di%,1))+1
+            wdd%=PEEKB(UADD(di%,2))+1 :l%=PEEKW(UADD(di%,6))+1
+          ENDIF
+
+            ed&=DATETOSECS(wyy%,wmm%,wdd%,0,0,0)
+            weeksum: (ed&)
+
+        ENDIF
+
+
+
+    elseif (r%=%t)  rem Today
+
+        wdd%=DAY
+        wmm%=MONTH
+        wyy%=YEAR
+
+        ed&=DATETOSECS(wyy%,wmm%,wdd%,0,0,0)
+        weeksum: (ed&)
+
+    elseif (r%=%c)  rem cursor
+
+        doday:(lcur%)
+        ed&=DATETOSECS(ddate%(3),ddate%(2),ddate%(1),0,0,0)
+        weeksum: (ed&)
+
+    endif
+
+endp
+
+
+proc weeksum: (date&)
+
+    local doweek%,yy%,mm%,dd%,dum%,l%,h%,m%
+    local wgap%, h$(2),m$(2), r%
+    local twover&
+    local oldest%    /* the old estimation value */
+
+    oldest%=esthrs%
+
+    rem use secstodate to find out the day value
+
+    SECSTODATE date&, yy%, mm%, dd%, dum%, dum%, dum%, l%
+
+    rem find out how far from the start of week we are
+    doweek%=dow(dd%,mm%,yy%)
+
+    rem set the date to the first day of the week
+    wgap%= doweek% - sofweek%
+
+    l%=l%-wgap%
+
+    doday:(l%)
+
+    rem date&=DATETOSECS(ddate%(3),ddate%(2),ddate%(1),0,0,0)
+    rem wkhours: (date&,l%)
+    rem doday:(l%)
+
+    if(esttm%(progvi%)=1)
+        r%=%e
+    else
+        r%=%a
+    endif
+
+    do
+
+        busy "Calculating Totals"
+        wkhours: (date&,l%)
+        doday:(l%)
+        Busy off
+
+        if( r%=%e)
+            if( esthrs%=1)
+                dINIT "Contract Estimates for Week Commencing "+num$(ddate%(1),2)+"/"+num$(ddate%(2),2)+"/"+num$(ddate%(3),4)
+            else
+                dINIT "Normal Estimates for Week Commencing "+num$(ddate%(1),2)+"/"+num$(ddate%(2),2)+"/"+num$(ddate%(3),4)
+            endif
+        else
+                dINIT "Actuals for Week Commencing "+num$(ddate%(1),2)+"/"+num$(ddate%(2),2)+"/"+num$(ddate%(3),4)
+        endif
+
+        h%=wacthrs&/60
+        m%=wacthrs&-(h%*60)
+
+        if(h%<10)
+            h$="0"+num$(h%,1)
+        else
+            h$=num$(h%,2)
+        endif
+
+        if(m%<10)
+            m$="0"+num$(m%,1)
+        else
+            m$=num$(m%,2)
+        endif
+
+        dTEXT "Actual Hours",h$+":"+m$
+
+        if (wfin%=1)
+            dTEXT "Working Week","Complete"
+        else
+            dTEXT "Working Week","Incomplete"
+            h%=westhrs&/60
+            m%=westhrs&-(h%*60)
+
+            if(h%<10)
+                h$="0"+num$(h%,1)
+            else
+                h$=num$(h%,2)
+            endif
+
+            if(m%<10)
+                m$="0"+num$(m%,1)
+            else
+                m$=num$(m%,2)
+            endif
+
+            if (r%=%e)
+                dTEXT "Estimated Hours", h$+":"+m$
+            endif
+        endif
+
+        if(r%=%e)
+            twover&=wover&
+        else
+            twover&=waover&
+        endif
+
+        if(twover&<1)
+            wisover%=0
+            twover&= -twover&
+        else
+            wisover%=1
+        endif
+
+
+        if(twover&=0)
+            h%=0
+        else
+            h%=twover&/60
+        endif
+        m%=twover&-(h%*60)
+
+        if(h%<10)
+            h$="0"+num$(h%,1)
+        else
+            h$=num$(h%,2)
+        endif
+
+        if(m%<10)
+            m$="0"+num$(m%,1)
+        else
+            m$=num$(m%,2)
+        endif
+
+
+        if (wfin%=1)
+
+            if (wisover%=1)
+                dTEXT "Overwork", h$+":"+m$
+            else
+                dTEXT "Underwork", h$+":"+m$
+            endif
+        else
+            if( r%=%e)
+                if (wisover%=1)
+                    dTEXT "Estimated Overwork", h$+":"+m$
+                else
+                    dTEXT "Estimated Underwork", h$+":"+m$
+                endif
+            else
+                if (wisover%=1)
+                    dTEXT "Overwork", h$+":"+m$
+                else
+                    dTEXT "Underwork", h$+":"+m$
+                endif
+            endif
+        endif
+
+        dTEXT "Days Worked",num$(wdaysw%,1)
+
+        if(r%=%e)
+            if( esthrs%=1)
+                dBUTTONS "Actuals",%a,"Normal Estimates",%n
+            else
+                dBUTTONS "Actuals",%a,"Contract Estimates",%c
+            endif
+        else
+            dBUTTONS "Normal Estimates",%n,"Contract Estimates",%c
+        endif
+
+        r%=DIALOG
+
+        if ( r%=%n )
+                esthrs% = 2
+                setsthr:
+                r%=%e
+        elseif ( r%=%c)
+                esthrs%=1
+                setsthr:
+                r%=%e
+        endif
+
+
+    until (r%<>%a AND r%<>%e)
+
+        esthrs% = oldest%
+        setsthr:
+
+endp
+
+
+rem ******************************
+rem edit the standard contract hours
+rem ******************************
+proc edshours:
+rem proc mproch:
+
+local max&,hok%,d%
+
+max&=86399   rem maximum seconds in a day
+hok%=1
+
+while(hok%<>0)      /* hours are not correct */
+
+    dINIT "Edit Contracted Hours"
+    dTIME cdstart&,"Contracted Start Time",2,0,max&
+    dTIME cdend&,"Contracted End Time",2,0,max&
+    dTIME cdhours&,"Contracted Daily Hours",2,0,max&
+
+
+
+    d%=DIALOG
+
+    if(d%<>0)
+        hok%=vdate%:(cdstart&,cdend&,cdhours&,1)
+    else
+        hok%=0
+    endif
+endwh
+
+if(d%<>0)
+
+    whours:
+    setsthr:
+    stdbrk:
+
+    if( esttm%(progvi%) = 1)
+        ndetails:
+    endif
+endif
+
+endp
+
+rem ******************************
+rem edit the standard normal hours
+rem ******************************
+proc ednhours:
+rem proc mproch:
+
+local max&,hok%,d%
+
+max&=86399   rem maximum seconds in a day
+
+hok%=1
+
+while(hok%<>0)      /* hours are not correct */
+
+
+    dINIT "Edit Normal Hours"
+    dTIME nlstart&,"Normal Start Time",2,0,max&
+    dTIME nlend&,"Normal End Time",2,0,max&
+    dTIME nlhours&,"Normal Daily Hours",2,0,max&
+
+
+
+    d%=DIALOG
+
+    if(d%<>0)
+        hok%=vdate%:(nlstart&,nlend&,nlhours&,1)
+    else
+        hok%=0
+    endif
+endwh
+
+if(d%<>0)
+    whours:
+    setsthr:
+    stdbrk:
+
+    if( esttm%(progvi%) = 1)
+        ndetails:
+    endif
+endif
+
+endp
+
+
+
+rem ******************************
+rem calculate a tme period gap
+rem ******************************
+proc calcgap:
+
+local max&,hok%,d%, calcs&, calce&, gap&, min&
+
+gap&=0
+calce&=0
+calcs&=0
+d%=1
+max&=86399   rem maximum seconds in a day
+hok%=1
+min&=0
+
+while(d%<>0)        /* hours are not correct */
+
+    dINIT "Time Period Length"
+    dTIME calcs&,"Period Start Time",2,0,max&
+    dTIME calce&,"Period End Time",2,0,max&
+    dTIME gap&,"Gap",2,0,max&
+    dBUTTONS "Calculate", 13
+
+    d%=DIALOG
+
+    if(d%<>0)
+        hok%=vdate%:(calcs&,calce&,min&,0)
+        if(hok%=0)
+            gap&=calce&-calcs&
+        else
+                dINIT "TIME VALIDATION ERROR"
+                dTEXT "","Start time greater than end time"
+                DIALOG
+        endif
+    endif
+endwh
+
+
+endp
+
+rem ************************************************
+rem given a time string HH:MM return the time long
+rem ************************************************
+proc timstr$:(tim&)
+
+	local dum%, h%, m%
+	local rt$(6), h$(3),m$(3)
+	
+		SECSTODATE tim&, dum%, dum%, dum%, h%, m%, dum%, dum%
+
+    if(h%<10)
+        h$="0"+num$(h%,1)
+    else
+        h$=num$(h%,2)
+    endif
+
+    if(m%<10)
+        m$="0"+num$(m%,1)
+    else
+        m$=num$(m%,2)
+    endif
+
+		rt$= h$+":"+m$
+
+		return rt$
+		
+endp
+
+rem **********************************************
+rem set dtime
+rem **********************************************
+proc setdtm:(h%,m%,s%)
+
+    if(h%<10)
+        dtime$(1)="0"+num$(h%,1)
+    else
+        dtime$(1)=num$(h%,2)
+    endif
+
+    if(m%<10)
+        dtime$(2)="0"+num$(m%,1)
+    else
+        dtime$(2)=num$(m%,2)
+    endif
+
+    if(s%<10)
+        dtime$(3)="0"+num$(s%,1)
+    else
+        dtime$(3)=num$(s%,2)
+    endif
+
+endp
+
+
+
+
+rem ************************************************
+rem given a time string HH:MM return the time long
+rem ************************************************
+proc timlon&:(tim$)
+	local h%,m%,d&
+	
+				h%=val(mid$(tim$,1,2))
+        m%=val(mid$(tim$,4,2))
+        d& = datetosecs(1970,1,1,h%,m%,0)
+
+		return d&
+endp
+
+rem *************************************************
+rem edit a day summary record
+rem *************************************************
+proc edrec1: (l%)
+local max&,dt%,jt%,lp%
+local dc$(255)
+local didx%,jidx%
+local dx%(10),jx%(10), ar%, vd%,d%
+local desc$(35)
+local dum%,h%,m%
+
+max&=86399   rem maximum seconds in a day
+
+if( dindx%( l%) = -1)
+/*
+busy "no rec exists"
+get
+busy off
+*/
+    if( sumstnd% = 0 )
+
+        sumstrt&=0
+        sumend& = 0
+        sumbrk& = 0
+        jidx%=0
+        didx%=0
+        desc$=""
+    else
+
+        sumstrt&=sdstart&
+        sumend& = sdend&
+        sumbrk& = estbrk&
+        jidx%=0
+        didx%=0
+        desc$=""
+    endif
+else
+
+
+    osumd: (sumdfn$ )
+    USE B
+    rem goto rec for day l%
+    POSITION dindx%(l%)
+
+    /*
+    	the following lines removed to convert dates into
+    	strings
+    	need to val the hours (1-2) and the mins (4-5)
+    	then datetosec them
+    	
+        sumstrt&=B.start&
+        sumend& = B.end&
+        sumbrk& = B.break&
+
+     */
+
+        sumstrt& = timlon&:(B.start$)
+        sumend& = timlon&:(B.end$)
+        sumbrk& = timlon&:(B.break$)
+
+        jidx%=B.jobtype%
+        didx%=B.daytype%
+        desc$=B.desc$
+    CLOSE
+
+endif
+
+
+        doday: ( l% )
+
+vd%=1
+d%=1
+dc$=""
+
+do
+
+dINIT "Edit Day "+num$(ddate%(1),2)+ "/" + num$(ddate%(2),2) +"/" +num$(ddate%(3),4)
+dTIME sumstrt&,"Start Time",2,0,max&
+dTIME sumend&,"End Time",2,0,max&
+dTIME sumbrk&,"Total Breaks",2,0,max&
+
+
+
+rem open data ref file
+rem find all days
+rem add each on to the string
+rem if we find the allocated one then make dt% equal to that pos in string
+rem remove the last comma
+rem do a dchoice
+
+            dc$=refdn$
+            if(refdu%(didx%+1)=1)
+                dt% = findind%:(didx%)
+            else
+rem             busy "day notfound"
+                dt% = 1
+            endif
+
+            dCHOICE dt%,"Day Type",dc$
+
+rem same as above
+rem dTEXT "Job Type","STSc"
+
+rem open data ref file
+rem find all jobs
+rem add each on to the string
+rem if we find the allocated one then make jt% equal to that pos in string
+rem remove the last comma
+rem do a dchoice
+/*
+            odfnstr: (dfnsfn$)
+            FIRST
+
+            jt%=0
+            lp%=0
+            dc$=""
+
+            do
+                    while( C.type%=1 AND NOT EOF)
+                        NEXT
+                    endwh
+
+                if(NOT EOF)
+
+                    lp%=lp%+1
+                    jx%(lp%) = C.index%
+                    if(C.index%=jidx%)
+                        jt%=lp%
+                    endif
+                    dc$=dc$+C.name$+","
+
+                endif
+
+                NEXT
+
+            until (EOF OR lp%>9)
+
+            dc$=LEFT$(dc$,LEN(dc$)-1)
+            CLOSE
+ */
+               
+            dc$=refjn$
+            if(refju%(jidx%+1)=1)
+                jt% = findinj%:(jidx%)
+            else
+rem             busy "day notfound"
+                jt% = 1
+            endif
+
+            dCHOICE jt%,"Job Name",dc$
+
+            dEDIT desc$,"Desc:"
+
+    d%=DIALOG
+    if (d%<>0)
+        if (refdnh%(findpos%:(dt%)+1)=NoHours)
+            sumstrt&=0
+            sumend&=0
+            sumbrk&=0
+            vd%=0
+        elseif (refdnh%(findpos%:(dt%)+1)=ContractHours)
+            sumstrt&=cdstart&
+            sumend&=cdend&
+            sumbrk&=getbrk&:(cdstart&,cdend&,cdhours&)
+            vd%=0
+        elseif (refdnh%(findpos%:(dt%)+1)=NormalHours)
+            sumstrt&=nlstart&
+            sumend&=nlend&
+            sumbrk&=getbrk&:(nlstart&,nlend&,nlhours&)
+            vd%=0
+        elseif (refdnh%(findpos%:(dt%)+1)=EnteredValues)
+            vd%=vdate%:(sumstrt&,sumend&,sumbrk&,1)
+        endif
+    endif
+
+until(d%=0 or (vd%=0 AND d%<>0))
+
+if(d%<>0)
+
+
+    rem goto rec for day l%
+    rem if details havechanged then update rec
+
+
+    if ( dindx%(l%) <> -1 )         rem a rec already exists
+        busy "Adding Record"
+    rem open database file
+        osumd: (sumdfn$ )
+        USE B
+        POSITION dindx%(l%)
+        B.date& = DATETOSECS(ddate%(3),ddate%(2),ddate%(1),0,0,0)
+
+        /*
+        the following lines changed to convert times
+        into strings before storage
+        */
+
+        B.start$ = timstr$:(sumstrt&)
+        B.end$ = timstr$:(sumend&)
+        B.break$ = timstr$:(sumbrk&)
+
+        B.daytype%=findpos%:(dt%)
+        B.jobtype%=finjpos%:(jt%)
+        B.partial%=0
+        B.desc$=desc$
+				B.total$ = timstr$:(tothour&:(sumstrt&,sumend&,sumbrk&))
+        UPDATE
+        dindx%(l%)=POS
+
+
+/*
+busy "update rec "+num$(l%,3)+" at "+num$(dindx%(l%),3)
+get
+busy off
+*/
+
+        CLOSE
+        rindxsum: (sumdfn$)
+
+    else
+ 
+
+        rem create a new rec
+        busy "Creating Record"
+        rem open database file
+        osumd: (sumdfn$ )
+        USE B
+        B.date& = DATETOSECS(ddate%(3),ddate%(2),ddate%(1),0,0,0)
+
+        B.start$ = timstr$:(sumstrt&)
+        B.end$ = timstr$:(sumend&)
+        B.break$ = timstr$:(sumbrk&)
+
+        B.details%=-1
+        B.daytype%=findpos%:(dt%)
+        B.jobtype%=jx%(jt%)
+        B.partial%=0
+        B.desc$=desc$
+				B.total$ = timstr$:(tothour&:(sumstrt&,sumend&,sumbrk&))
+        APPEND
+            dindx%(l%)=POS
+/*
+busy "add new rec "+num$(l%,3)+" at "+num$(dindx%(l%),3)
+get
+busy off
+*/
+        CLOSE
+        rindxsum: (sumdfn$)
+
+    endif
+
+    rem put this rec number into the index file
+rem dindx%(l%)=POS
+
+rem CLOSE
+    busy off
+
+#ifdef INDEXFILE
+    rem update the index record
+    busy "Updating Indexes"
+    get
+    oindx:( indxfn$ )
+    USE A
+    POSITION dpos%(l%)
+    A.date& = DATETOSECS(ddate%(3),ddate%(2),ddate%(1),0,0,0)
+    A.rn% = dindx%(l%)
+    UPDATE
+    CLOSE
+    busy off
+#endif
+
+    gupdate off
+    bline: (l%)
+
+    osumd: (sumdfn$ )
+
+    if (((l%-1) >= frec%) AND l%<>fscr%)
+        sdaysum1: (l%-1)
+    endif
+
+    sdaysum1: (l%)
+
+    if ((l%+1) <= mrec%)
+        sdaysum1: (l%+1)
+    endif
+
+		CLOSE
+    pcursor:
+    gupdate on
+
+endif
+
+endp
+
+rem *************************************************
+rem delete a day summary record
+rem *************************************************
+proc delrec1: (l%)
+
+local r%
+
+
+if( dindx%( l%) <> -1)
+
+
+    osumd: (sumdfn$ )
+    USE B
+    rem goto rec for day l%
+    POSITION dindx%(l%)
+
+    /* are you sure you want to delete */
+        doday: ( l% )
+
+    dINIT "Delete Day "+num$(ddate%(1),2)+ "/" + num$(ddate%(2),2) +"/" +num$(ddate%(3),4)
+    dTEXT "","Are you sure?"
+    dBUTTONS "Yes",%y,"No",%n
+    r%=DIALOG
+    if(r%=%y)
+        ERASE
+    endif
+
+    CLOSE
+
+    if(r%=%y)
+        rindxsum: (sumdfn$)
+        gupdate off
+        bline: (l%)
+				osumd: (sumdfn$ )
+        sdaysum1: (l%)
+				CLOSE
+        pcursor:
+        gupdate on
+    endif
+
+endif
+
+endp
+
+

@@ -1,0 +1,971 @@
+
+PROC main:
+
+    rem Al's Time Keeping Program
+
+    global pat$(35)      rem the path header
+    global gpat$(35)        rem the path
+
+    global dindx%(366)      rem day indexes
+
+    global daysper%(14)     rem days per month for year daysper%(1)
+
+    rem global swin%(4)     rem statuswindow info stuff
+    global i%(32)           rem gINFO details
+    global horchar%, verchar%   rem chars on screen
+
+    global ddate%(3)    rem a display date dd,mm.yy
+    global dtime$(3,2)  rem a display time hh,mm,ss
+
+    global cdate&     rem the current date
+    global sofweek%   rem the first day of the week 7=sun
+    global swhours&   rem standard weekly hours
+    global sdstart&   rem standard day start time
+    global sdend&     rem standard day end time
+    global sdhours&   rem standard hours per day
+		global estart$(6)  rem start time estimate
+		global eend$(6)  rem end time estimate
+		global ebreak$(6)  rem break time estimate
+		global etotal$(6)  rem total time estimate
+
+
+
+    global cdstart&     rem contracted day start time
+    global cdend&           rem contracted day end tme
+    global cdhours&     rem contracted hours per day
+    global nlstart&     rem normal day start time
+    global nlend&           rem normal day end tme
+    global nlhours&     rem normal hours per day
+    global esthrs%      rem 1 for contracted 2 for normal
+
+
+    global wdays%(7)  rem which days are working(1) days and which aren't (2)
+    global dt$(30)    rem day types
+    global dow$(35)   rem days of the week string
+
+    global yindx%           rem the year of the indexes
+
+    global progvi%    rem the program's modus operandi
+
+    global winid%           rem the window id
+
+    rem variables for use when displaying summary info
+    global  fscr%           rem first on screen
+    global  mscr%           rem max on screen
+    global  lcur%           rem logical cursor position
+    global  dcur%           rem display cursor position
+    global  frec%           rem first rec
+    global  mrec%           rem maximum records
+    global  ocur%           rem old display cursor position
+
+    rem variables for storing title details
+    global tcgaps1%(7)  rem gaps for progvi mode 1
+    global tctitle$(7,15)   rem the titles themselves
+    global tcgaps2%(7)  rem gaps for progvi mode 2
+
+    rem above tc variables are replaced by
+	#define STATUS_FIELD		1
+	#define CURSOR_FIELD		2
+	#define DATE_FIELD		3
+	#define	DAYTYPE_FIELD		4
+	#define	START_TIME_FIELD	5
+	#define	END_TIME_FIELD		6
+	#define BREAK_TIME_FIELD	7
+	#define TOTAL_TIME_FIELD	8
+	#define JOBTYPE_FIELD		9
+	#define DAYDESC_FIELD		10
+
+	#define MAXFIELDS		10
+
+	global fldlen%(MAXFIELDS)	rem the max display len
+	global fldx%(MAXFIELDS)		rem the x pos for the field
+	global fldtitl$(MAXFIELDS,20)	rem the title for the field
+
+	global dispord%(MAXFIELDS)	rem the fields to display in order 0 = end
+
+	
+	
+    global dfont%           rem the display font
+    global vfont$(25)   rem the valid display fonts
+
+    global esttm%(4)            rem estimate the daily times
+    global estbrk&              rem the length of the standard estimated break
+    global estpar%              rem estimate partial details?
+
+    global sumstnd%             rem default to standard hours (1) or zero (0)
+    global sumstrt&         rem start date when editing day summary
+    global sumend&              rem end time when entering day summary
+    global sumbrk&              rem break when entering day sumary
+
+    global shodays%             rem variable controlling which days are shown
+                                                rem 255 = all days, 1 = working days, 2 = non working
+
+    global sumdfn$(127)     rem the day summary data file
+    global indxfn$(127)     rem the day index data filename
+    global dfnsfn$(127)     rem the reference data file
+
+    global mnuopts$(4,15)   rem the menu option lower case hot keys
+    global mnuupts$(4,15)   rem the menu option upper case hot keys
+
+    global wacthrs&                 rem the weekly actual hours
+    global westhrs&                 rem the weekly estimated hours
+    global wfin%                        rem the week has finished (1)
+    global wover&                       rem the overwork figure
+    global wisover%                 rem is it overwork? (1)
+    global wdaysw%                  rem number of days worked
+    global waover&                  rem actual overwork
+  
+
+
+    global upfix$(3)                rem the user prefix
+    global usrname$(25)         rem the user name
+    global userid%                  rem the user id
+
+    global dbver%                       rem the database version
+    global progver%                 rem the program version
+
+rem the day names stuff, allow a max of 25 or less if the 25 will not fit into refdn$
+
+global refdn$(255)  rem the reference day names
+global refdno%(25)  rem the offsets into refdn$ for the day names
+global refdnl%(25)  rem the length of the day name
+global refdnh%(25)  rem the hour types for each of the day names
+global refdtot%     rem the total number of days
+global refdu%(25)   rem 1 if the day is used, 0 if not used
+
+global refjn$(255)  rem the reference job names
+global refjno%(25)  rem the offsets into refjn$ for the job names
+global refjnl%(25)  rem the length of the job name
+global refjnh%(25)  rem the hour types for each of the job names
+global refjtot%     rem the total number of jobs
+global refju%(25)   rem 1 if the job is used, 0 if not used
+
+
+rem hour types are
+#define EnteredValues       0
+#define NormalHours         1
+#define ContractHours       2
+#define NoHours                 3
+
+global hrtype$(50)  rem the hours in a selectable string
+
+
+    local k%, km%
+
+rem local y%,m%,d%,h,m%,s%,l%
+
+		CACHE 5000,5000
+
+    hrtype$ = "Entered,Normal,Contract,No Hours"
+
+
+    dbver%=101
+    progver%=101
+
+rem wover&=-1
+rem SECSTODATE wover&,y%,m%,d%,h%,m%,s%,l%
+rem dinit "date -1"
+rem dlong y%,"y",-27,2000
+rem dlong m%,"m",-27,2000
+rem dlong d%,"d",-27,2000
+rem dlong h%,"h",-27,2000
+rem dlong m%,"m",-27,2000
+rem dlong s%,"s",-27,2000
+rem dlong l%,"l",-27,2000
+rem DIALOG
+
+    statuswin ON,2 : FONT 11,16
+
+
+    winid%=gCREATE(0,0,gWIDTH,gHEIGHT,1,1)
+  gBORDER 0
+  gUSE winid%
+
+
+    initprog:
+    setsthr:
+
+    mnuopts$(1)="acefgpstxz" REM our hot-keys
+    mnuupts$(1)="z" REM our upper case hot-keys
+
+
+
+    fscr% = doyear%: ( DAY, MONTH, YEAR)
+    lcur% = fscr%
+
+    if (daysper%(4)=60)
+        mrec% = 366
+    else
+        mrec% = 365
+    endif
+
+    frec% = 1
+
+    chngfnt:
+
+    dcur% = lcur% - fscr%
+    ocur% = dcur%
+
+    pdetails:
+
+
+    while(1)
+
+        k%=GET
+        km%=KMOD
+
+        if (k%=$122)                                            rem if menu then
+            @("hmenu"+num$(progvi%,1)):         rem handle the menu
+
+        elseif (k%=256)                                     rem up
+            @("upkey"+num$(progvi%,1)):
+
+        elseif (k%=257)                                     rem down
+            @("downkey"+num$(progvi%,1)):
+
+        elseif (k%=261)                                     rem page down
+            if( km% AND 4)
+                goday: (mrec%)
+            else
+                @("pgdwn"+num$(progvi%,1)):
+            endif
+
+
+        elseif (k%=260)                                     rem page up
+            if( km% AND 4)
+                goday: (1)
+            else
+                @("pgup"+num$(progvi%,1)):
+            endif
+
+        elseif (k%=13)                                      rem enter
+            @("edrec"+num$(progvi%,1)): (lcur%)
+
+        elseif (k%=8)                                       rem delete
+            @("delrec"+num$(progvi%,1)): (lcur%)
+
+
+
+    ELSEIF k% AND $200  REM hot-key pressed directly?
+      k%=k%-$200        REM remove Psion key code
+
+
+            if ((km% AND 2) OR (km% AND 16)) rem shift or caps
+                rem upper case
+            IF LOC(mnuupts$(progvi%),CHR$(k%))       REM DIRECT HOT-KEY CHECK
+                        @("mprocu" + chr$(k%) ): REM mprocn:, mproco:, ...
+                ENDIF
+
+            else
+            IF LOC(mnuopts$(progvi%),CHR$(k%))       REM DIRECT HOT-KEY CHECK
+                        @("mproc" + chr$(k%) ): REM mprocn:, mproco:, ...
+                ENDIF
+            endif
+
+
+        endif
+    endwh
+
+ENDP
+
+
+proc chngfnt:
+
+   	setfont: (dfont%)
+  	mscr% = verchar% - ( titleh%: / i%(3) )
+  	fdispos:
+
+endp
+
+rem ******************************
+rem initiate program
+rem ******************************
+proc initprog:
+
+    local fh%                                       rem file handle
+    local r%
+    local lp%
+    local fn$(128)                  rem filename
+
+
+    rem ************************
+    rem Set the defaults
+    rem ************************
+
+    upfix$="D"
+    usrname$="Default User"
+    userid%=1
+
+    estpar%=0
+
+
+    esttm%(1)=1
+    esttm%(2)=0
+    esttm%(3)=0
+    esttm%(4)=0
+
+
+    sumstnd%=1          rem set the
+
+rem vfont$="01,02,04,05,09,10,11,13"    rem set up the valid fonts
+    vfont$="13,01,04,10,11" rem set up the valid fonts
+
+    tcgaps1%(1) = 1     rem the cursor
+    tcgaps1%(2) = 3     rem the date
+    tcgaps1%(3) = 14        rem the start time
+    tcgaps1%(4) = 20        rem the end time
+    tcgaps1%(5) = 26        rem the breaks
+    tcgaps1%(6) = 32        rem the total time
+
+    tctitle$(1) = " "       rem the cursor
+    tctitle$(2) = "DATE"        rem the date
+    tctitle$(3) = "START"       rem the start time
+    tctitle$(4) = "END"     rem the end time
+    tctitle$(5) = "BREAK"       rem the breaks
+    tctitle$(6) = "TIME"        rem the total time
+
+
+rem the following replaces the above
+/*
+	#define STATUS_FIELD		1
+	#define CURSOR_FIELD		2
+	#define DATE_FIELD		3
+	#define	DAYTYPE_FIELD		4
+	#define	START_TIME_FIELD	5
+	#define	END_TIME_FIELD		6
+	#define BREAK_TIME_FIELD	7
+	#define TOTAL_TIME_FIELD	8
+	#define JOBTYPE_FIELD		9
+	#define DAYDESC_FIELD		10
+
+	#define MAXFIELDS		10
+
+	global fldlen%(MAXFIELDS)	rem the max display len
+	global fldx%(MAXFIELDS)		rem the x pos for the field
+	global fldtitl$(MAXFIELDS,20)	rem the title for the field
+*/
+	
+	rem -1 for no gap after it
+	fldlen%(STATUS_FIELD) = 2 -1
+	fldlen%(CURSOR_FIELD) = 1 -1
+	fldlen%(DATE_FIELD) = 10
+	fldlen%(DAYTYPE_FIELD) = 25
+	fldlen%(START_TIME_FIELD) = 5
+	fldlen%(END_TIME_FIELD) = 5
+	fldlen%(BREAK_TIME_FIELD) = 5
+	fldlen%(TOTAL_TIME_FIELD) = 5
+	fldlen%(JOBTYPE_FIELD) = 25
+	fldlen%(DAYDESC_FIELD) = 30
+	
+	fldtitl$(STATUS_FIELD) = " "
+	fldtitl$(CURSOR_FIELD) = " "
+	fldtitl$(DATE_FIELD) = "Date"
+	fldtitl$(DAYTYPE_FIELD) = "Day Type"
+	fldtitl$(START_TIME_FIELD) = "Start"
+	fldtitl$(END_TIME_FIELD) = "End"
+	fldtitl$(BREAK_TIME_FIELD) = "Break"
+	fldtitl$(TOTAL_TIME_FIELD) = "Total"
+	fldtitl$(JOBTYPE_FIELD) = "Job Type"
+	fldtitl$(DAYDESC_FIELD) = "Description"
+
+	dispord%(1) = STATUS_FIELD
+	dispord%(2) = CURSOR_FIELD
+	dispord%(3) = DATE_FIELD
+	dispord%(4) = START_TIME_FIELD
+	dispord%(5) = END_TIME_FIELD
+	dispord%(6) = BREAK_TIME_FIELD
+	dispord%(7) = TOTAL_TIME_FIELD
+	dispord%(8) = DAYTYPE_FIELD
+	dispord%(9) = 0
+rem	dispord%(9) = JOBTYPE_FIELD
+rem	dispord%(10) = DAYDESC_FIELD
+
+
+
+    shodays%=1              rem default to working days only
+
+
+
+    progvi%=1                                   rem set view to day summary
+
+rem only allow choice between testing and usage if
+rem a file called testfile.dat exists in opd\atkp
+
+
+        pat$="m:\opd\atkp\testfile.dat"         rem set internal disk path
+    if (EXIST(pat$))
+        dINIT "Testing or Usage?"
+        dBUTTONS "Testing",%t,"Usage",%u
+        r%=DIALOG
+        if( r% = %t)
+            pat$="m:\opd\atkp\testatkp"         rem set internal disk path
+        else
+            pat$="m:\opd\atkp"          rem set internal disk path
+        endif
+    else
+            pat$="m:\opd\atkp"          rem set internal disk path
+    endif
+
+
+    rem check if dir exists
+
+
+    if NOT EXIST(pat$)              rem then create it
+        TRAP MKDIR pat$
+    endif
+
+
+    pat$=pat$+"\"
+    gpat$=pat$
+
+    dfont%=11
+
+    setsweek:                                   rem set standard week details
+
+    readpara:
+    readhour:
+    setsthr:
+
+    yindx%=YEAR                                     rem get current year
+
+    cdaysper: (yindx%)
+
+#ifdef INDEXFILE
+    indxfn$=pat$ + upfix$ + NUM$(yindx%,4) + ".IDX"
+
+    cindx: (indxfn$)            rem create the index file if necessary
+
+    rem load index file into memory
+
+    oindx: (indxfn$)            rem open the index file as A
+    USE A
+    rindx:                              rem read the index of A into dindx%
+    CLOSE
+#endif
+
+    sumdfn$=pat$ + upfix$ + NUM$(yindx%,4) + ".DAT"
+
+    csumd: (sumdfn$)            rem create the day summary file if necessary
+
+    dfnsfn$=pat$ + "dprt.dat"
+    cdfnstr: (dfnsfn$)      rem create the reference data file
+    readrd:(dfnsfn$)        rem read the daytype data file
+    readrj:(dfnsfn$)        rem read the jobtype data file
+
+#ifndef INDEXFILE
+    rindxsum: (sumdfn$)
+#endif
+
+endp
+
+rem *********************************************
+rem calculate the daysper month for the given year
+rem correctly handle the leap year feb  scenario
+rem *********************************************
+proc cdaysper: (yy%)
+
+    daysper%(1) = yy%
+    daysper%(2) = 0
+    daysper%(3) = 31
+    daysper%(4) = 29 + 31   rem assume it is a leap year !!
+
+    rem the tricky leap year stuff starts here
+    onerr leaperr::
+
+
+    datetosecs(yy%,2,29,01,01,01)   rem if this is not a leap year
+                                                                rem then this will force an error
+
+    goto endlerr::
+
+    leaperr::
+        daysper%(4) = 28 + 31
+
+    endlerr::
+        onerr off
+
+
+    rem end of the leap year stuff!!
+
+    daysper%(5) = daysper%(4) + 31  rem march
+    daysper%(6) = daysper%(5) + 30  rem april
+    daysper%(7) = daysper%(6) + 31  rem may
+    daysper%(8) = daysper%(7) + 30  rem june
+    daysper%(9) = daysper%(8) + 31  rem july
+    daysper%(10) = daysper%(9) + 31 rem august
+    daysper%(11) = daysper%(10) + 30    rem september
+    daysper%(12) = daysper%(11) + 31    rem october
+    daysper%(13) = daysper%(12) + 30    rem november
+    daysper%(14) = daysper%(13) + 31    rem december
+
+
+endp
+
+
+rem *************************************************
+rem for a specific day of the year, place the correct
+rem date value in ddate
+rem *************************************************
+proc doday: (d%)
+
+    local lp%
+
+    lp% = 3
+
+    do
+
+
+        if( (d%<= daysper%( lp% )) AND (d% > daysper%( lp%-1)) )
+
+            ddate%(3) = daysper%(1)                     rem YEAR
+            ddate%(2) = lp%-2                                   rem MONTH
+            ddate%(1) = d% - daysper%( lp%-1) rem DAY
+            lp% = 0
+
+        endif
+
+        lp% = lp% + 1
+
+    until (lp% = 1)
+
+endp
+
+rem *********************************************
+rem return the dayof the year for a specific
+rem date, this can be used as an index for dindx%
+rem *********************************************
+proc doyear%: (dd%, mm%, yy%)
+
+    if (yy% <> daysper%(1))     rem have we got the month values for this year?
+        cdaysper: (yy%)                 rem nope. so calculatethem
+    endif
+
+    return ( daysper%((mm%+2) -1) + dd%)
+
+endp
+
+rem **********************************************
+rem return a value depending upon the error of
+rem validating a start date, end date and break time
+rem start date> end date return 1
+rem break > start date - end date return 2
+rem if ok then return 0
+rem if show%=1 then display an error message
+rem **********************************************
+proc vdate%: (stime&, etime&, btime&, show%)
+
+    local r%
+
+    r%=0
+
+    if(stime&>etime&)
+        r%=1
+    endif
+
+    if (btime&> (etime&-stime&))
+            r%=r%+2
+    endif
+
+    if(r%<>0 AND show%=1)
+        dINIT "DATE VALIDATION ERROR"
+        if(r%=3 or r%=1)
+            dTEXT "","Start time greater than end time"
+        endif
+        if(r%=3 or r%=2)
+            dTEXT "","Break is greater than start and end gap"
+        endif
+        DIALOG
+    endif
+
+    return r%
+endp
+
+proc setsthr:
+    if(esthrs% = 1) rem use contract
+        sdstart&=cdstart&
+        sdend&=cdend&
+        sdhours&=cdhours&
+    else
+        sdstart&=nlstart&
+        sdend&=nlend&
+        sdhours&=nlhours&
+    endif
+    stdbrk:                 rem calculate standard breaks
+
+    estart$=timstr$:(sdstart&)
+    eend$=timstr$:(sdend&)
+    ebreak$=timstr$:(estbrk&)
+    etotal$=timstr$:(sdhours&)
+
+endp
+
+rem *******************************
+rem setup the standard week details
+rem *******************************
+proc setsweek:
+
+    local lp%
+
+    sofweek%=1
+
+    wdays%(1)=1     rem monday
+    wdays%(2)=1
+    wdays%(3)=1
+    wdays%(4)=1
+    wdays%(5)=1
+    wdays%(6)=2
+    wdays%(7)=2
+
+    rem sdstart&=0
+    rem sdend&=0
+    rem sdhours&=0
+    swhours&=0
+
+    esthrs%=2
+    nlstart&=DATETOSECS(YEAR,MONTH,DAY,8,55,0)
+    nlend&=DATETOSECS(YEAR,MONTH,DAY,17,15,0)
+    nlhours&=DATETOSECS(YEAR,MONTH,DAY,7,45,0)
+    cdstart&=DATETOSECS(YEAR,MONTH,DAY,9,0,0)
+    cdend&=DATETOSECS(YEAR,MONTH,DAY,17,30,0)
+    cdhours&=DATETOSECS(YEAR,MONTH,DAY,7,30,0)
+
+    setsthr:
+
+    dt$="WORK DAY,WEEKEND"
+
+rem set up the days of the week string
+dow$=""
+lp%=1
+
+do
+
+    if(lp%<>1)
+       dow$=dow$+","
+    endif
+
+    dow$=dow$+dayname$(lp%)
+    lp%=lp%+1
+
+until (lp%=8)
+
+lp%=1
+do
+
+    dindx%(lp%)=-1
+    lp%=lp%+1
+
+until (lp%>366)
+
+endp
+
+
+
+
+
+rem ********************
+rem zoom in the font size
+rem ********************
+proc zoom1:
+
+    local r%, t$(2)
+
+    rem make font number into a string
+    t$=num$ (dfont%,2)
+    if (len(t$)<2)
+        t$="0"+t$
+    endif
+
+    rem find the font in the list
+    r%=loc(vfont$, t$)
+
+    rem is the font the last one?
+    if( r%+3 > len(vfont$))     rem yeah
+        r% = 1
+    else
+        r%=r%+3
+    endif
+
+    rem get the list offset
+    dfont%=(((r% -1) +3) /3)
+
+    rem set the font
+    dfont%=val(mid$(vfont$,(((dfont%-1)*3)+1),2))
+    chngfnt:
+    ndetails:
+
+endp
+
+rem ********************
+rem zoom out the font size
+rem ********************
+proc zoomou1:
+
+    local r%, t$(2)
+
+    rem make font number into a string
+    t$=num$ (dfont%,2)
+    if (len(t$)<2)
+        t$="0"+t$
+    endif
+
+    rem find the font in the list
+    r%=loc(vfont$, t$)
+
+    rem is the next font the first one?
+    if( r%-3 < 1)
+        r%=len(vfont$)-2
+    else
+        r%=r%-3
+    endif
+
+    rem get the list offset
+    dfont%=(((r% -1) +3) /3)
+
+    rem set the font
+    dfont%=val(mid$(vfont$,(((dfont%-1)*3)+1),2))
+    chngfnt:
+    ndetails:
+
+endp
+
+
+
+
+
+rem **********************************************************
+rem calc the actual hours worked for the week begining date&
+rem and the estimated hours
+rem l% is the day number of the start of the week
+rem this func will have to be fixed for moving to a new year
+rem***********************************************************
+proc wkhours: (date&,l%)
+
+
+    local doweek%,lp%,nowdays%,l2%
+
+    wdaysw%=0
+    nowdays%=0          rem count the number of working days defined
+    l2%=l%
+    wacthrs&=0
+    westhrs&=0
+    wover&=0
+    wisover%=0
+
+
+    doday:(l2%)
+    doweek%=dow( ddate%(1),ddate%(2),ddate%(3))
+    lp%=doweek%
+
+    rem for every day in the week, if it is a workday then
+    rem add the hours to the total
+
+    do
+
+        if(wdays%(lp%)=1)           rem working day
+            doday:(l2%)
+            nowdays%=nowdays%+1
+
+            wover&=wover&+ timemin&:(sdhours&)
+
+            if(dindx%(l2%) <> -1) rem we worked this day!
+
+
+                rem open file
+                osumd:( sumdfn$ )
+
+                rem p-osition at record
+                POSITION dindx%(l2%)
+
+                rem just check theday type
+                rem and if it is a work day then total
+                rem the houurs worked and add one to the day total
+rem             if(B.daytype% = 0)
+
+                    rem calculate the totals worked for this day
+                    rem add the totals to the current sum total
+
+                    wacthrs&=wacthrs&+ timemin&:(tothour&:(timlon&:(B.start$),timlon&:(B.end$),timlon&:(B.Break$)))
+                    wdaysw%=wdaysw%+1
+
+rem             endif
+
+                rem close file
+                CLOSE
+            else
+                rem calculate the total estimated for this day
+                westhrs&=westhrs&+ timemin&:(sdhours&)
+                rem add the estimate to the current estimate sum
+            endif
+
+
+        endif
+
+        lp%=lp%+1                           rem next day
+        if(lp%>7)
+            lp%=1
+        endif
+
+        l2%=l2%+1
+        rem handle new year here
+
+    until (lp%=doweek%)
+
+    if(wdaysw% = nowdays%)
+        wfin%=1
+    else
+        wfin%=0
+    endif
+
+
+    waover&=wacthrs&-wover&
+    wover&=(westhrs&+wacthrs&)-wover&
+rem if(wover&<1)
+rem     wisover%=0
+rem     wover&= -wover&
+rem else
+rem     wisover%=1
+rem endif
+
+
+
+endp
+
+proc timemin&: (date&)
+
+    local h%,m%,s%,dum%,l%
+
+    SECSTODATE date&,dum%,dum%,dum%,h%,m%,s%,l%
+
+    return (h%*60)+m%
+
+endp
+
+rem
+
+PROC daytodat:(days&)
+ENDP
+
+
+rem ************************************************
+rem calculate the number of seconds for a time
+rem ************************************************
+PROC secs&: (h%, m%)
+   RETURN h%*INT(3600)+m%*60
+ENDP
+
+rem ************************************************
+rem calculate the standard breaks
+rem ************************************************
+PROC stdbrk:
+
+rem local hs%,ms%, yy%,mm%,dd%,he%, me%, sh&, dum%
+
+rem SECSTODATE sdstart&, yy%, mm%, dd%, hs%, ms%, dum%, dum%
+rem     SECSTODATE sdend&, dum%, dum%, dum%, hs%, ms%, dum%, dum%
+
+rem     sh& = sdend&-sdstart&
+rem     sh&=sh& + DATETOSECS(yy%,mm%,dd%,00,00,00)
+
+rem     estbrk&=sh&-sdhours&
+    estbrk&=getbrk&:(sdstart&, sdend&, sdhours&)
+rem     estbrk& + DATETOSECS(yy%,mm%,dd%,00,00,00)
+
+
+ENDP
+
+
+rem ************************************************
+rem calculate the break for hours
+rem ************************************************
+PROC getbrk&: (s&, e&, t&)
+
+    local hs%,ms%, yy%,mm%,dd%,he%, me%, sh&, dum%, eb&
+
+    SECSTODATE s&, yy%, mm%, dd%, hs%, ms%, dum%, dum%
+    SECSTODATE e&, dum%, dum%, dum%, hs%, ms%, dum%, dum%
+
+    sh& = e&-s&
+    sh&=sh& + DATETOSECS(yy%,mm%,dd%,00,00,00)
+
+    eb&=sh&-t&
+    eb&=eb& + DATETOSECS(yy%,mm%,dd%,00,00,00)
+
+    return eb&
+
+ENDP
+
+rem *************************************************************
+rem tothours calculates the total hours worked given a start time
+rem an end time and the breaks
+rem *************************************************************
+PROC tothour&:( start&, end&, breaks&)
+
+rem    local hs%,ms%, yy%,mm%,dd%,he%, me%, sh&, dum%
+   	local sh&
+
+rem    SECSTODATE start&, yy%, mm%, dd%, hs%, ms%, dum%, dum%
+rem   SECSTODATE end&, dum%, dum%, dum%, hs%, ms%, dum%, dum%
+
+    sh& = end&-start&-breaks&
+rem    sh&=sh& + DATETOSECS(yy%,mm%,dd%,00,00,00)
+    sh&=sh& + DATETOSECS(1970,1,1,00,00,00)
+
+
+    RETURN sh&
+
+ENDP
+
+
+rem **********************************************
+rem set dtime
+rem **********************************************
+proc setdtm:(h%,m%,s%)
+
+    if(h%<10)
+        dtime$(1)="0"+num$(h%,1)
+    else
+        dtime$(1)=num$(h%,2)
+    endif
+
+    if(m%<10)
+        dtime$(2)="0"+num$(m%,1)
+    else
+        dtime$(2)=num$(m%,2)
+    endif
+
+    if(s%<10)
+        dtime$(3)="0"+num$(s%,1)
+    else
+        dtime$(3)=num$(s%,2)
+    endif
+
+endp
+
+
+proc setfont: (f%)
+
+    rem FONT f%,0
+    gFONT f%
+
+    gINFO i%(1)
+
+
+    horchar% = gWIDTH / i%(7)           rem chars on screen x-wise
+    verchar% = gHEIGHT / i%(3)          rem chars onsceen y-wise
+
+
+endp
+
+
+rem **********************************
+rem return the size of the current title
+rem *************************************
+proc titleh%:
+
+    if (progvi% = 1)
+        return i%(3)
+    endif
+
+endp
+
+

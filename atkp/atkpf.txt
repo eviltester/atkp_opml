@@ -1,0 +1,412 @@
+/*****************************/
+/****************************/
+rem			ATKPF.H
+rem
+rem File handling commands
+rem
+rem rindxsum: (sumdfn$)		creates index array from days summary file
+rem csumd: (sumdfn$)
+rem osumd: (sumdfn$)
+rem cdfnstr: (fn$)
+rem maxindx%:(type%)		rem return the maximum index value for type%
+/*****************************/
+/*****************************/
+
+
+
+rem **********************************
+rem read the summary file and put the indexes into dindx%
+rem **********************************
+proc rindxsum: (sumdfn$)
+
+	local dum%,lp%
+
+	osumd:(sumdfn$)
+	
+	
+	lp%=1
+	do
+		dindx%(lp%)=-1
+		lp%++
+	until (lp%>366)
+	
+	busy "Calculating Indexes"	
+
+	FIRST
+	while( NOT EOF)
+	
+		rem find the day of the year of the date
+		SECSTODATE B.date&,dum%,dum%,dum%,dum%,dum%,dum%,lp%
+	rem	dpos%(lp%) = POS
+		dindx%(lp%) = POS
+
+/*
+		busy num$(lp%,3)+" is "+num$(POS,3)
+		get
+*/				
+		NEXT
+	endwh
+
+	CLOSE
+	busy off
+	
+endp
+
+
+rem *************************************
+rem create the summary file for the days
+rem *************************************
+proc csumd: (sumdfn$)
+
+	local lp%
+
+rem	if (delsumd%=1)	
+rem		DELETE sumdfn$	
+rem	endif
+	
+	if NOT EXIST(sumdfn$)	rem check if indxfn$ exists
+			busy "Creating Days"
+			CREATE sumdfn$,B,date&,start$,end$,break$,details%,jobtype%,daytype%,partial%,desc$,total$
+			CLOSE
+			busy off
+	endif
+
+endp
+
+
+rem **********************************
+rem open the day summary file as B
+rem **********************************
+proc osumd: (sumdfn$)
+
+	OPEN sumdfn$,B,date&,start$,end$,break$,details%,jobtype%,daytype%,partial%,desc$, total$
+	
+endp
+
+rem *************************************
+rem create the definable string table (for job type etc)
+rem *************************************
+proc cdfnstr: (fn$)
+
+	local lp%
+
+rem	if (deldstr%=1)	
+rem		DELETE fn$	
+rem	endif
+
+	if NOT EXIST(fn$)	rem check if fil exists
+			busy "Creating Defines"
+			CREATE fn$,C,type%,index%,name$, hours%
+			rem CLOSE
+			rem busy off
+
+			rem lp%=0
+			rem do
+				C.type%=0		rem 0 is jobtype
+				C.index%=0		rem index 0 is always the undefined one (default)
+				C.name$="Employer"
+				APPEND
+				C.type%=1		rem  1 is day type
+				C.index%=0		rem index 0 is always the undefined one (default)
+				C.name$="Work Day"
+				C.hours%=EnteredValues
+				APPEND
+				C.type%=1		rem  1 is day type
+				C.index%=1		
+				C.name$="Holiday"
+				C.hours%=ContractHours
+				APPEND
+				C.type%=1		rem  1 is day type
+				C.index%=2		
+				C.name$="National Holiday"
+				C.hours%=ContractHours
+				APPEND
+				C.type%=1		rem  1 is day type
+				C.index%=3		
+				C.name$="Sickday"
+				C.hours%=ContractHours
+				APPEND
+			rem	lp%=lp%+1
+			rem until lp%>1
+	
+			CLOSE
+			busy off
+	endif
+endp
+
+
+rem **********************************
+rem open the definablestring file as C
+rem **********************************
+proc odfnstr: (fn$)
+
+	OPEN fn$,C,type%,index%,name$,hours%
+	
+endp
+
+
+proc maxindx%:(type%)		rem return the maximum index value
+
+	local mind%
+	
+					odfnstr: (dfnsfn$)
+					FIRST
+					mind%=0
+					
+					while(NOT EOF)
+						if (C.type%=type%)
+							if(C.index%>mind%)
+								mind%=C.index%
+							endif
+						endif
+						NEXT	
+					endwh
+					CLOSE
+			return mind%
+endp
+
+
+rem read file into memory
+proc readrd: (fname$)
+
+	local lookfor%,higher%
+
+	higher%=0
+	lookfor% = 0	rem look for index 0
+	refdtot% = 0	rem no days in memory
+	refdn$ = ""	rem no day text
+
+	rem initialise refdu% to all 0
+	while (lookfor% < 25)
+		refdu%(lookfor%+1) = 0
+		lookfor% = lookfor% + 1
+	endwh
+
+	lookfor% = 0
+
+	rem open file
+	odfnstr: (dfnsfn$)
+
+	rem first rec
+	FIRST
+
+	while( NOT EOF AND lookfor%<25)
+
+		if(C.type% = 1 AND C.index% = lookfor%)
+
+			refdnl%(C.index%+1) = len(C.name$)
+			refdnh%(C.index%+1) = C.hours%
+			refdu%(C.index%+1) = 1
+
+			if(refdn$ = "")
+				refdno%(C.index%+1) = 1
+				refdn$ = C.name$
+			else
+				refdno%(C.index%+1) = len(refdn$)+2	
+				refdn$ = refdn$ + "," + C.name$
+			endif
+
+			refdtot% = refdtot% + 1
+			lookfor% = lookfor% + 1
+			higher%=0
+			FIRST
+		else
+				if(C.type% = 1 AND C.index% > lookfor%)
+					higher%=1
+				endif
+
+		endif
+	
+		NEXT
+		
+		if(EOF AND higher%=1)
+			lookfor% = lookfor% +1
+			higher% = 0
+			FIRST
+		endif
+		
+	endwh
+
+	CLOSE
+
+endp
+
+
+rem given an index value
+rem find the relative position of it in the string
+
+proc findind%: (indx%)
+
+local l%, c%, r%
+
+	c%=0	rem count of used days
+	l%=1	rem loop count
+	r%=0	rem return value
+
+	while(l%<26)
+		if(refdu%(l%) = 1)
+			c%=c%+1	rem found next used one
+		endif
+
+		if(l% = (indx%+1))
+			r%=c%		rem found val, so ready to return it
+		endif
+
+		l% = l%+1		rem loop around
+
+	endwh
+
+	return r%
+endp
+
+rem given an pos value
+rem find the index
+rem this code assumes that the first one is at 0
+
+proc findpos%: (pos%)
+
+local l%, c%, r%
+
+	c%=0	rem count of used days
+	l%=1	rem loop count
+	r%=0	rem return value
+
+	while(l%<26)
+		if(refdu%(l%) = 1)
+			c%=c%+1	rem found next used one
+		endif
+
+		if(c% = pos%)
+			r%=c%		rem found val, so ready to return it
+		endif
+
+		l% = l%+1		rem loop around
+
+	endwh
+
+	return r%-1
+endp
+
+rem read file into memory
+proc readrj: (fname$)
+
+	local lookfor%,higher%
+
+	higher%=0
+	lookfor% = 0	rem look for index 0
+	refjtot% = 0	rem no jobs in memory
+	refjn$ = ""	rem no job text
+
+	rem initialise refju% to all 0
+	while (lookfor% < 25)
+		refju%(lookfor%+1) = 0
+		lookfor% = lookfor% + 1
+	endwh
+
+	lookfor% = 0
+
+	rem open file
+	odfnstr: (dfnsfn$)
+
+	rem first rec
+	FIRST
+
+	while( NOT EOF AND lookfor%<25)
+
+		if(C.type% = 0 AND C.index% = lookfor%)
+
+			refjnl%(C.index%+1) = len(C.name$)
+			refjnh%(C.index%+1) = C.hours%
+			refju%(C.index%+1) = 1
+
+			if(refjn$ = "")
+				refjno%(C.index%+1) = 1
+				refjn$ = C.name$
+			else
+				refjno%(C.index%+1) = len(refjn$)+2	
+				refjn$ = refjn$ + "," + C.name$
+			endif
+
+			refjtot% = refjtot% + 1
+			lookfor% = lookfor% + 1
+			higher%=0
+			FIRST
+		else
+				if(C.type% = 0 AND C.index% > lookfor%)
+					higher%=1
+				endif
+
+		endif
+	
+		NEXT
+		
+		if(EOF AND higher%=1)
+			lookfor% = lookfor% +1
+			higher% = 0
+			FIRST
+		endif
+		
+	endwh
+
+	CLOSE
+
+endp
+
+
+rem given an index value
+rem find the relative position of it in the string
+
+proc findinj%: (indx%)
+
+local l%, c%, r%
+
+	c%=0	rem count of used jobs
+	l%=1	rem loop count
+	r%=0	rem return value
+
+	while(l%<26)
+		if(refju%(l%) = 1)
+			c%=c%+1	rem found next used one
+		endif
+
+		if(l% = (indx%+1))
+			r%=c%		rem found val, so ready to return it
+		endif
+
+		l% = l%+1		rem loop around
+
+	endwh
+
+	return r%
+endp
+
+rem given an pos value
+rem find the index
+rem this code assumes that the first one is at 0
+
+proc finjpos%: (pos%)
+
+local l%, c%, r%
+
+	c%=0	rem count of used jobs
+	l%=1	rem loop count
+	r%=0	rem return value
+
+	while(l%<26)
+		if(refju%(l%) = 1)
+			c%=c%+1	rem found next used one
+		endif
+
+		if(c% = pos%)
+			r%=c%		rem found val, so ready to return it
+		endif
+
+		l% = l%+1		rem loop around
+
+	endwh
+
+	return r%-1
+endp
+
+
+

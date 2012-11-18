@@ -1,0 +1,47 @@
+rem ******************
+rem the special codes file
+rem ******************
+
+
+rem ******************
+rem enter a special code
+rem ******************
+proc scodes:
+
+	local c$(30), r%, valid%
+	
+	valid%=0
+	
+	while(valid%=0)
+
+		dINIT "Special Code"
+		dEDIT c$,"Code:"
+		dBUTTONS "Activate",13
+		r%=DIALOG
+	
+		if (r%=13)
+			c$=upper$(c$)
+			valid%=docode%:(c$)
+		else
+			valid%=1
+		endif
+	endwh
+endp
+
+
+
+rem **********************
+rem docode, calls the relevant code procedure
+rem **********************
+proc docode%:( c$)
+	local cd%
+	
+	cd%=0
+	
+	return cd%
+endp
+
+
+rem ****************
+rem uninstall
+rem remove all data

@@ -1,0 +1,177 @@
+/***********************************************/
+rem Atkpkeys.opp
+rem
+rem the key handling functions
+rem
+rem downkey1:
+rem upkey1:
+rem pgdwn1:
+rem pgup1:
+rem
+rem
+rem
+rem
+rem
+rem
+rem
+/************************************************/
+
+rem *************************************
+rem handle the down key for the day summary
+rem ****************************************
+proc downkey1:
+
+
+	if (lcur%<mrec%)
+	
+		lcur%=lcur%+1
+	
+		if ((dcur%+1)<mscr%)			
+		
+				ocur%=dcur%
+				dcur%=dcur%+1
+				pcursor:
+		
+		else									rem need to scroll screen up
+		
+				ocur%=dcur%				
+				fscr%=fscr%+1
+				hcursor:
+				gUPDATE OFF
+				gSCROLL 0,-i%(3),0, titleh%: + i%(3) +1,gWIDTH,(i%(3)*(mscr%-1))-titleh%:
+				gBORDER 1	
+				rem draw data at lcur%
+        osumd: (sumdfn$ )
+				sdaysum1: (lcur%-1)
+				bline: (lcur%)
+				sdaysum1: (lcur%)
+				CLOSE
+				pcursor:
+				gUPDATE ON
+											
+		endif
+	endif
+endp
+
+rem *********************************************
+rem the up arrow key
+rem *********************************************
+proc upkey1:
+
+
+	if (lcur%>frec%)
+
+		lcur%=lcur%-1
+	
+		if(dcur%>0)
+		
+			ocur%=dcur%
+			dcur%=dcur%-1
+			pcursor:
+			
+		else							rem need to scroll screen
+
+				ocur%=dcur%	
+				fscr%=fscr%-1			
+				hcursor:
+				gUPDATE OFF
+				gSCROLL 0,i%(3),0, titleh%:+1, gWIDTH, (i%(3)*(mscr%))-titleh%:
+				gBORDER 1	
+				rem draw data at lcur%
+        osumd: (sumdfn$ )
+				sdaysum1: (lcur%)
+				CLOSE
+				pcursor:
+				gUPDATE ON
+		
+		endif
+	endif
+
+endp
+
+
+
+
+
+rem *************************************
+rem handle the page down key for the day summary
+rem ****************************************
+proc pgdwn1:
+
+
+	if (lcur%<mrec%)
+	
+		rem check to see if we are on the last page
+		
+		if (lcur%+mscr%>mrec%)
+		
+				rem and if so then make the logical cur pos the last
+				
+				lcur%=mrec%
+				ocur%=dcur%
+				dcur%=mrec%-fscr%
+				pcursor:
+	
+		else
+		
+				rem OK, budge it up a page
+				
+				lcur%=lcur%+mscr%
+				fscr%=fscr%+mscr%
+				
+				rem redraw details
+				
+				ndetails:
+		endif
+	
+	endif
+endp
+
+rem *********************************************
+rem the page up arrow key
+rem *********************************************
+proc pgup1:
+
+	if (lcur%>frec%)
+	
+		rem check to see if we are on the first page
+		
+		
+		if (fscr%=frec%)
+		
+				rem and if so then make the logical cur pos the first
+		
+				
+				lcur%=frec%
+				ocur%=dcur%
+				dcur%=0
+				pcursor:
+	
+		else
+		
+				rem OK, budge it down a page
+		
+						
+				lcur%=lcur%-mscr%
+				fscr%=fscr%-mscr%
+				
+				if (lcur%<frec% or fscr%<frec%)
+						lcur%=frec%
+						fscr%=frec%
+						
+						ocur%=dcur%
+						dcur%= lcur%-fscr%
+				endif
+
+									
+				rem redraw details
+				ndetails:
+				pcursor:
+				
+				
+		endif
+	
+	endif
+
+endp
+

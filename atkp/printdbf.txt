@@ -1,0 +1,147 @@
+#define OBRACE	1
+#define CBRACE	2
+#define NUM			3
+#define CHAR		4
+#define EMPTY		0
+
+PROC main:
+
+local pdef$(255)
+local outp$(255)
+local fil$(255)
+global lhidup$(255)
+
+pdef$= "[ F1 (20) ][ F2 (3) ][F3 (25)][NEXT]"	
+fil$="\dat\pulp.dbf"
+
+	OPEN fil$,B,f1$,f2$,f3$,f4$,f5$,f6$,f7$,f8$,f9$,f10$,f11$,f12$,f13$,f14$,f15$,f16$,f17$,f18$,f19$,f20$,f21$,f22$,f23$,f24$,f25$,f26$,f27$,f28$,f29$,f30$,f31$,f32$
+	FIRST
+	
+	WHILE NOT EOF
+		print parsest$:(pdefs$)
+	ENDWH
+	
+	CLOSE
+
+ENDP
+
+rem parse the passed string and return
+rem the string to output
+proc parsest$:(par$)
+
+local pos%
+local str$(255)
+local tok$(255),tokstrt%, toklen%, toktyp%
+local rep%,fldno%, fldlen%, hid%
+
+str$=""
+pos%=1
+
+	if par$=""
+		return ""
+	endif
+
+tok$=gettok$:(mid$(par$,pos%,len(par$)), addr(toklen%), addr(toktyp%))
+
+WHILE( toktyp%<>EMPTY AND toktyp%<>CBRACE)
+
+
+	if (toktyp% = CBRACE)
+		rem act on the fielddefn here
+	endif
+
+	tok$=gettok$:(mid$(par$,pos%,len(par$)), addr(toklen%), addr(toktyp%))
+
+ENDWH
+
+endp
+
+
+rem return the next token from par$
+rem and using the pointer pos%, insert
+rem the number of characters in the
+rem token
+rem type will be used t store the token
+rem type
+proc gettok$:(par$,len%, type%)
+
+local cnt%
+local tok$(255)
+local cfnd%
+
+cnt%=0
+tok$=""
+
+	if par$=""
+			pokew len%,cnt%
+		pokew type%,EMPTY
+		return par$
+	endif
+	
+cnt%=1
+
+rem skip spaces and paren
+cfnd%=0
+	while(cnt% <= len(par$) AND cfnd%=0)
+		if(mid$(par$,cnt%,1) = " " OR mid$(par$,cnt%,1) = "(" OR mid$(par$,cnt%,1) = ")")
+			cnt%=cnt%+1
+		else
+			cfnd%=1
+		endif
+	endwh
+
+
+rem if [ then return it with len% 1
+	if (mid$(par$,cnt%,1) = "[")
+			pokew len%,cnt%
+			pokew type%,OBRACE
+			return "["
+	endif
+	
+rem if num then keep going till not num
+rem and count the number of nums
+	if (isnum%:(mid$(par$,cnt%,1)))
+		while(isnum%:(mid$(par$,cnt%,1)))
+			cnt%=cnt%+1
+		endwh
+		
+			pokew len%,cnt%-1
+			pokew type%,NUM
+			return left$(par$,cnt%-1)
+	endif
+
+rem if char then do as nums
+	if (ischar%:(mid$(par$,cnt%,1)))
+		while(ischar%:(mid$(par$,cnt%,1)))
+			cnt%=cnt%+1
+		endwh
+		
+			pokew len%,cnt%-1
+			pokew type%,CHAR
+			return left$(par$,cnt%-1)
+	endif
+
+
+endp
+
+proc isnum%:(c$)
+
+	if (mid$(c$,1,1) >= "0" AND mid$(c$,1,1) <= "9")
+		return 1
+	else
+		return 0
+	endif
+	
+endp
+
+proc ischar%:(c$)
+
+	if (mid$(c$,1,1) >= "A" AND mid$(c$,1,1) <= "Z")
+		return 1
+	else
+		return 0
+		
+	endif
+endp
+
+rem proc nextbrc%:()

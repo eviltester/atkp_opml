@@ -1,0 +1,70 @@
+rem convert day type and hour type file to new format
+rem whilst retaining the data
+
+
+
+proc main:
+
+	local pat$(120),f1$(250),f2$(250)
+	local type%, index%, name$(250), hours%
+	local c%
+	
+	c%=0
+	
+	pat$="M:\opd\atkp\"
+	f1$=pat$+"dprt.dat"
+	f2$=pat$+"dprt.OLD"
+	
+rem rename the file
+	RENAME f1$,f2$
+	
+rem open old format
+OPEN f2$,B, type%, index%, name$
+
+rem create and open new format
+CREATE f1$,A, type%, index%, name$, hours%
+
+USE B
+FIRST
+
+While (NOT EOF)
+
+rem repeat
+rem read old
+USE B
+	type%=B.type%
+	index%=B.index%
+	name$=B.name$
+	hours%=0
+		
+rem write new
+USE A
+	A.type%=type%
+	A.index%=index%
+	A.name$=name$
+	A.hours%=hours%
+
+	APPEND
+	
+rem display count
+	print c%
+	c%=c%+1
+	
+USE B
+NEXT
+Endwh
+rem until eof
+
+rem close old
+USE B
+CLOSE
+rem close new
+USE A
+CLOSE
+
+print "Done"
+endp
+
+
+
+

@@ -1,0 +1,33 @@
+
+Rem individual parameters
+#define nopara		0
+#define FontSize	1
+#define Estimatingonoff	2
+#define Estimatehours	3
+#define ShowDays	4
+#define NewEntry	5
+rem *** #define UnusedSlot	6
+#define woday1	7
+#define woday2	8
+#define woday3	9
+#define woday4	10
+#define woday5	11
+#define woday6	12
+#define woday7	13
+#define sofwkday	14
+
+rem group parameters
+#define nogroup		0
+#define wodays	1
+#define normalparams	2
+
+#include "atkp1.opp"
+#include "prefmnu.opp"
+#include "spcodes.opp"
+#include "saveparm.opp"
+#include "atkpmnu.opp"
+#include "atkpf.opp"
+#include "atkpdlgs.opp"
+#include "atkpkeys.opp"
+#include "atkpdisp.opp"
+

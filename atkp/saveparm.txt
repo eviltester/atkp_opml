@@ -1,0 +1,299 @@
+rem hours save file
+rem userid, hourstype, starttime, endtime, nohours, name of hours
+rem userid%, hour%, start&, end&, num&, name$
+rem hourstype = 1  when Standard Hours
+rem hourstype = 2  when Contract Hours
+
+
+rem parameter save file
+rem userid, parameterid, parameterintegervalue, parametertextvalue
+rem userid%, paraid%,paraint%,parastr$
+
+
+
+rem **********************************
+rem open the paramater file as C
+rem **********************************
+proc opara:
+
+	local parafil$(50)
+
+	parafil$=gpat$+"para.dat"
+
+	if( NOT EXIST (parafil$))
+		busy "creating para file"
+		CREATE parafil$,C,userid%,paraid%,paraint%,parastr$
+		CLOSE
+		busy off
+	endif
+
+	OPEN parafil$,C,userid%,paraid%,paraint%,parastr$
+	
+endp
+
+rem **********************************
+rem open the hours file as C
+rem **********************************
+proc ohour:
+
+	local hourfil$(50)
+
+	hourfil$=pat$+"hour.dat"
+
+	if( NOT EXIST (hourfil$))
+		CREATE hourfil$,C,userid%, hour%, start&, end&, num&, name$
+		CLOSE
+	endif
+
+	OPEN hourfil$,C,userid%, hour%, start&, end&, num&, name$
+	
+endp
+
+
+rem write para ( individual parameter, group parameter)
+proc wparas: (indipar%, gruppar%)
+
+	opara:
+
+	if (indipar% = FontSize OR gruppar%=normalparams)
+		wparaint: (FontSize, dfont%)
+	endif
+
+	if (indipar% = Estimatingonoff OR gruppar%=normalparams)
+			wparaint: (Estimatingonoff, esttm%(progvi%))
+	endif
+
+	if (indipar% = Estimatehours OR gruppar%=normalparams)
+			wparaint: (Estimatehours, esthrs%)
+	endif
+
+	if (indipar% = ShowDays OR gruppar%=normalparams)
+			wparaint: (ShowDays, shodays%)
+	endif
+
+	if (indipar% = NewEntry OR gruppar%=normalparams)
+			wparaint: (NewEntry, sumstnd%)
+	endif
+
+
+	if (indipar% = woday1 OR gruppar%=wodays)
+			wparaint: (woday1, wdays%(1))
+	endif
+
+	if (indipar% = woday2 OR gruppar%=wodays)
+			wparaint: (woday2, wdays%(2))
+	endif
+
+	if (indipar% = woday3 OR gruppar%=wodays)
+			wparaint: (woday3, wdays%(3))
+	endif
+
+	if (indipar% = woday4 OR gruppar%=wodays)
+				wparaint: (woday4, wdays%(4))
+	endif
+
+	if (indipar% = woday5 OR gruppar%=wodays)
+			wparaint: (woday5, wdays%(5))
+	endif
+
+	if (indipar% = woday6 OR gruppar%=wodays)
+			wparaint: (woday6, wdays%(6))
+	endif
+
+	if (indipar% = woday7 OR gruppar%=wodays)
+			wparaint: (woday7, wdays%(7))
+	endif
+
+	if (indipar% = sofwkday OR gruppar%=wodays)
+			wparaint: (sofwkday, sofweek%)
+	endif
+
+rem
+
+
+	CLOSE
+
+endp
+
+
+rem write an individual integer paramater
+proc wparaint: (recid%,para%)
+
+	rem go to top of file
+FIRST
+
+	rem find the record for this user id
+
+	WHILE((NOT(C.paraid% = recid% AND C.userid%=userid%)) AND (NOT EOF))
+		NEXT
+	ENDWH
+	
+	if( EOF)
+		rem record not found then insert it
+		C.userid%=userid%
+		C.paraid%=recid%
+		C.paraint%=para%
+		C.parastr$=""
+		APPEND	
+	else
+		rem if record found then update it
+		C.paraint%=para%
+		UPDATE
+ 	endif
+endp
+
+rem create an above function for string parameters
+
+
+
+rem write hours
+proc whours:
+
+	ohour:
+
+	whour: (1,nlstart&,nlend&,nlhours&,"Standard")
+	whour: (2,cdstart&,cdend&,cdhours&,"Contract")
+	
+	CLOSE
+
+endp
+
+rem write an individual hour
+proc whour: (recid%,ps&,pe&,pn&,pname$)
+
+	rem go to top of file
+FIRST
+
+	rem find the record for this user id
+
+	WHILE((NOT(C.hour% = recid% AND C.userid%=userid%)) AND (NOT EOF))
+		NEXT
+	ENDWH
+	
+	if( EOF)
+		rem record not found then insert it
+		rem userid%, hour%, start%, end%, num%, name$
+
+		C.userid%=userid%
+		C.hour%=recid%
+		C.start&=ps&
+		C.end&=pe&
+		C.num&=pn&
+		C.name$=pname$
+		APPEND	
+	else
+		rem if record found then update it
+		C.hour%=recid%
+		C.start&=ps&
+		C.end&=pe&
+		C.num&=pn&
+		C.name$=pname$
+		UPDATE
+ 	endif
+endp
+
+rem read the hour file and set the hours
+proc readhour:
+
+	ohour:
+	FIRST
+	while( NOT EOF)
+		if (C.userid%=userid%)
+			sethour: (C.hour%, C.start&, C.end&,C.num&,C.name$)
+		endif
+		NEXT
+	endwh
+
+	CLOSE
+endp
+
+
+rem sethe hour
+proc sethour: (hour%, start&, end&, num&, name$)
+
+	if(hour%=1)
+		nlstart&=start&
+		nlend&=end&
+		nlhours&=num&
+	endif
+	
+	if(hour%=2)
+		cdstart&=start&
+		cdend&=end&
+		cdhours&=num&
+	endif
+endp
+
+rem read the parameter file and set the parameters
+proc readpara:
+
+	opara:
+	FIRST
+	while( NOT EOF)
+		if (C.userid%=userid%)
+			setpara: (C.paraid%, C.paraint%, C.parastr$)
+		endif
+		NEXT
+	endwh
+
+	CLOSE
+endp
+
+rem set the parameter
+proc setpara: (indipar%, paraint%, parastr$)
+
+	if (indipar% = FontSize)
+		dfont%=paraint%
+	endif
+
+	if (indipar% = Estimatingonoff)
+			esttm%(progvi%)=paraint%
+	endif
+
+	if (indipar% = Estimatehours)
+			esthrs%=paraint%
+	endif
+
+	if (indipar% = ShowDays)
+			shodays%=paraint%
+	endif
+
+	if (indipar% = NewEntry)
+			sumstnd%=paraint%
+	endif
+
+
+	if (indipar% = woday1)
+			wdays%(1)=paraint%
+	endif
+
+	if (indipar% = woday2)
+			wdays%(2)=paraint%
+	endif
+
+	if (indipar% = woday3)
+			wdays%(3)=paraint%
+	endif
+
+	if (indipar% = woday4)
+			wdays%(4)=paraint%
+	endif
+
+	if (indipar% = woday5 )
+			wdays%(5)=paraint%
+	endif
+
+	if (indipar% = woday6)
+			wdays%(6)=paraint%
+	endif
+
+	if (indipar% = woday7)
+			wdays%(7)=paraint%
+	endif
+
+	if (indipar% = sofwkday)
+			sofweek%=paraint%
+	endif
+
+endp
+
